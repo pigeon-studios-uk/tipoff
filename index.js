@@ -88,7 +88,7 @@ async function main() {
     health.state.migrations = await sqlStore.setup();
     logger.success(`Database ready (${config.mysql.database}, ${health.state.migrations.total} migrations, ${health.state.migrations.applied.length} new)`);
   } catch (err) {
-    logger.error(`Can't start: ${err.message}`);
+    logger.error(`Can't start: ${sqlStore.describe(err)}`);
     await sqlStore.close();
     await hosted.flush();
     return finish(1);

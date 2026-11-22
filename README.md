@@ -16,6 +16,7 @@
   <p>
     <a href="https://pigeonstudios.co.uk/apps/tipoff/invite/"><strong>Add Tipoff to your server</strong></a> ·
     <a href="#running-your-own-copy">Run your own</a> ·
+    <a href="https://railway.com/deploy/XlIiwS?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic">Deploy on Railway</a> ·
     <a href="#configuration">Configure</a> ·
     <a href="CHANGELOG.md">Changelog</a> ·
     <a href="https://pigeonstudios.co.uk/apps/tipoff/guide/">Guide</a>
@@ -76,10 +77,11 @@ Running your own copy means you run the bot, keep it online and up to date, and 
 - **You're responsible for its data.** Your copy saves reported messages and who reported them. You're the one handling that data, so you need your own privacy policy and terms for it, and you must follow [Discord's Developer Terms and Policy](https://discord.com/developers/docs/policies-and-agreements/developer-policy). Set your own links in [`.env`](#configuration): your copy never shows ours.
 - **No support for self-hosted copies.** We can't help you run your copy. Bugs in the code itself are welcome as [issues](https://github.com/pigeon-studios-uk/tipoff/issues).
 
-There are three ways to run it:
+There are four ways to run it:
 
 | Way | Best for |
 |---|---|
+| [Railway](#railway) | One click: Railway runs Tipoff and a MySQL database for you. |
 | [Docker Compose](#docker-compose) | A server or VPS with Docker. Tipoff and its database in one command. |
 | [Docker image](#docker-image-only) | You already have a MariaDB or MySQL database. |
 | [Node.js](#nodejs) | Running it directly, without Docker. |
@@ -87,7 +89,7 @@ There are three ways to run it:
 ## Requirements
 
 - A **Discord application** with a bot ([below](#1-create-the-discord-app)).
-- **Docker** with Compose, or **Node.js 24** or newer.
+- A **Railway** account, **Docker** with Compose, or **Node.js 24** or newer.
 - **MariaDB 10.6+** or **MySQL 8+**. Docker Compose includes MariaDB for you.
 - About 100 MB of memory for a few hundred servers.
 
@@ -105,6 +107,12 @@ There are three ways to run it:
 Copy `.env.example` to `.env` and fill in at least `DISCORD_TOKEN`, `DISCORD_CLIENT_ID` and the database settings. Every setting is described in [Configuration](#configuration).
 
 ### 3. Start it
+
+#### Railway
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/XlIiwS?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+Railway asks for your bot token and application ID (and, optionally, your privacy policy, terms and support links), then runs Tipoff with its own MySQL database. You don't need a `.env` file: change settings later in the Tipoff service's **Variables**. Railway charges for what it uses; see its pricing.
 
 #### Docker Compose
 

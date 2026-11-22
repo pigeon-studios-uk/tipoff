@@ -24,6 +24,13 @@ function folder(files) {
 
 // --- without a database ---
 
+test("a failed connection with no message still says why Tipoff can't start", () => {
+  const refused = Object.assign(new AggregateError([Object.assign(new Error("connect ECONNREFUSED ::1:3306"), { code: "ECONNREFUSED" })], ""), { message: "" });
+  assert.equal(sqlStore.errorCode(refused), "ECONNREFUSED");
+  assert.match(sqlStore.describe(refused), /can't connect to the database at .+ \(ECONNREFUSED\)/);
+  assert.equal(sqlStore.describe(new Error("Access denied")), "Access denied");
+});
+
 test("Tipoff's own migration files are all valid", () => {
   assert.ok(migrations.load().length >= 1);
 });

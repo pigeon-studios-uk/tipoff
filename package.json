@@ -1,6 +1,6 @@
 {
   "name": "tipoff",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "A Discord report bot: members report a message or a member in two clicks, and every report becomes a case moderators can claim, resolve and act on.",
   "main": "index.js",

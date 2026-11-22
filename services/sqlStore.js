@@ -98,12 +98,41 @@ async function ping() {
   }
 }
 
+// A failed connection can be an AggregateError (one try per address, IPv4 and IPv6) with no message or code of its own.
+function errorCode(err) {
+  return err?.code || err?.errors?.find(e => e?.code)?.code || "";
+}
+
+/** A readable reason for a database error, even one with no message. */
+function describe(err) {
+  if (err?.message) return err.message;
+  const code = errorCode(err);
+  return code ? `can't connect to the database at ${config.mysql.host}:${config.mysql.port} (${code})` : String(err);
+}
+
+// The database can still be starting when Tipoff does (Docker Compose, Railway), or its hostname not resolvable yet:
+// wait for it, up to a minute by default.
+const NOT_UP_YET = new Set([...CONNECTION_ERRORS, "ENOTFOUND", "EAI_AGAIN", "EHOSTUNREACH"]);
+
+async function waitForDatabase(waitMs = Number(process.env.MYSQL_START_WAIT_MS ?? 60000)) {
+  const until = Date.now() + waitMs;
+  for (;;) {
+    try {
+      await getPool().query("SELECT 1");
+      return;
+    } catch (err) {
+      if (!NOT_UP_YET.has(errorCode(err)) || Date.now() >= until) throw err;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+}
+
 let setupPromise = null;
 
-/** Runs the migrations (once per run). Resolves to { applied, total }. */
+/** Waits for the database, then runs the migrations (once per run). Resolves to { applied, total }. */
 function setup() {
   if (!setupPromise) {
-    setupPromise = require("./migrations").migrate(getPool()).catch(err => {
+    setupPromise = waitForDatabase().then(() => require("./migrations").migrate(getPool())).catch(err => {
       setupPromise = null;
       throw err;
     });
@@ -117,4 +146,4 @@ async function close() {
   setupPromise = null;
 }
 
-module.exports = { isConfigured, getPool, query, transaction, ping, setup, close, SAFE_TO_RETRY };
+module.exports = { isConfigured, getPool, query, transaction, ping, setup, close, describe, errorCode, SAFE_TO_RETRY };

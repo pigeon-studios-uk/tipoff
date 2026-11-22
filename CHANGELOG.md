@@ -10,6 +10,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-22
+
+### Added
+
+- A one-click [Railway template](README.md#railway): Railway asks for your bot token and application ID, then runs Tipoff with its own MySQL database.
+
+### Fixed
+
+- If the database is still starting when Tipoff does (Docker Compose, Railway), Tipoff waits for it for up to a minute instead of stopping, and a failed connection now says why instead of an empty "Can't start:".
+
 ## [2.0.0] - 2026-11-22
 
 The first public release of Tipoff. It's version 2 because the hosted Tipoff has already been through its first version behind the scenes: this is the same report bot, for anyone who wants to run their own copy.
@@ -26,5 +36,6 @@ The first public release of Tipoff. It's version 2 because the hosted Tipoff has
 - **Privacy:** closed cases are deleted after 90 days (30 to 365), a server's data 30 days after the bot leaves, and `/privacy` for anyone.
 - **Running your own copy:** a Docker image (`ghcr.io/pigeon-studios-uk/tipoff`), Docker Compose with MariaDB, and links to your own website, guide, privacy policy, terms and support in `.env`.
 
-[Unreleased]: https://github.com/pigeon-studios-uk/tipoff/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/pigeon-studios-uk/tipoff/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/pigeon-studios-uk/tipoff/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/pigeon-studios-uk/tipoff/releases/tag/v2.0.0
