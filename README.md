@@ -120,10 +120,10 @@ With Compose, leave `MYSQL_HOST` as `db`: that's the database container.
 
 #### Docker image only
 
-The image is published for every release at `ghcr.io/pigeon-studios-uk/tipoff`. Use a version tag, such as `1` (the newest 1.x) or an exact version:
+The image is published for every release at `ghcr.io/pigeon-studios-uk/tipoff`. Use a version tag, such as `2` (the newest 2.x) or an exact version:
 
 ```bash
-docker run -d --name tipoff --restart unless-stopped --env-file .env -p 3000:3000 ghcr.io/pigeon-studios-uk/tipoff:1
+docker run -d --name tipoff --restart unless-stopped --env-file .env -p 3000:3000 ghcr.io/pigeon-studios-uk/tipoff:2
 ```
 
 #### Node.js

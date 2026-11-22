@@ -10,9 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-22
+## [2.0.0] - 2026-11-22
 
-The first public release of Tipoff, the same report bot as the hosted Tipoff, for anyone who wants to run their own copy.
+The first public release of Tipoff. It's version 2 because the hosted Tipoff has already been through its first version behind the scenes: this is the same report bot, for anyone who wants to run their own copy.
 
 ### Added
 
@@ -26,5 +26,5 @@ The first public release of Tipoff, the same report bot as the hosted Tipoff, fo
 - **Privacy:** closed cases are deleted after 90 days (30 to 365), a server's data 30 days after the bot leaves, and `/privacy` for anyone.
 - **Running your own copy:** a Docker image (`ghcr.io/pigeon-studios-uk/tipoff`), Docker Compose with MariaDB, and links to your own website, guide, privacy policy, terms and support in `.env`.
 
-[Unreleased]: https://github.com/pigeon-studios-uk/tipoff/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/pigeon-studios-uk/tipoff/releases/tag/v1.0.0
+[Unreleased]: https://github.com/pigeon-studios-uk/tipoff/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/pigeon-studios-uk/tipoff/releases/tag/v2.0.0

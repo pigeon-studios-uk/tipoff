@@ -3,7 +3,7 @@
 
 services:
   tipoff:
-    image: ghcr.io/pigeon-studios-uk/tipoff:${TIPOFF_VERSION:-1}
+    image: ghcr.io/pigeon-studios-uk/tipoff:${TIPOFF_VERSION:-2}
     restart: unless-stopped
     init: true
     env_file: .env
