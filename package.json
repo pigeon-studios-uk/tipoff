@@ -1,0 +1,26 @@
+{
+  "name": "tipoff",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A public Discord report bot: members report messages and users in two clicks, and moderators handle each report as a case.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "register": "node register-commands.js",
+    "test": "node --test --test-concurrency=1 \"tests/*.test.js\""
+  },
+  "author": "Pigeon Studios (https://pigeonstudios.co.uk)",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "discord.js": "14.27.0",
+    "figlet": "1.12.0",
+    "mysql2": "3.24.5",
+    "winston": "3.19.0",
+    "winston-daily-rotate-file": "5.0.0",
+    "winston-transport": "4.9.0"
+  }
+}

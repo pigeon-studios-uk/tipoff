@@ -1,0 +1,35 @@
+# Tipoff and a MariaDB database: cp .env.example .env, fill it in, then docker compose up -d
+# The database keeps its data in the "tipoff-db" volume, so it survives restarts and updates.
+
+services:
+  tipoff:
+    image: ghcr.io/pigeon-studios-uk/tipoff:${TIPOFF_VERSION:-1}
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      MYSQL_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MYSQL_DB:-tipoff}
+      MARIADB_USER: ${MYSQL_USER:-tipoff}
+      MARIADB_PASSWORD: ${MYSQL_PASS:?Set MYSQL_PASS in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - tipoff-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  tipoff-db:

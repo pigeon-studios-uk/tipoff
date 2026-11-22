@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.git
+.github
+.gitlab-ci.yml
+node_modules
+logs
+tests
+assets
+*.md
+docker-compose.yml
+railway.json

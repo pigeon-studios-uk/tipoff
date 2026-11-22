@@ -1,0 +1,101 @@
+name: Release
+
+# Push a tag such as v1.2.0 to publish a release (Pigeon Studios tags from GitLab, which mirrors here). The tag must
+# match the version in package.json, and CHANGELOG.md must have a section for it; its text becomes the release notes.
+# Publishes tipoff.zip on the GitHub release and the Docker image ghcr.io/pigeon-studios-uk/tipoff.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: tipoff_test
+          MARIADB_USER: tipoff_test
+          MARIADB_PASSWORD: tipoff_test
+          MARIADB_ROOT_PASSWORD: tipoff_root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: '3306'
+      MYSQL_USER: tipoff_test
+      MYSQL_PASS: tipoff_test
+      MYSQL_DB: tipoff_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Tests
+        run: npm test
+
+      - name: Check the tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME doesn't match package.json version $version"; exit 1; }
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found && /^\[.*\]: / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "No CHANGELOG.md section for $version"; exit 1; }
+
+      - name: Build tipoff.zip
+        run: git archive --format=zip --prefix=tipoff/ -o tipoff.zip "$GITHUB_REF_NAME"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" tipoff.zip --title "Tipoff $GITHUB_REF_NAME" --notes-file notes.md
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/pigeon-studios-uk/tipoff
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          labels: |
+            org.opencontainers.image.title=Tipoff
+            org.opencontainers.image.description=A Discord report bot: two-click reports become cases your moderators can act on.
+            org.opencontainers.image.licenses=LicenseRef-Pigeon-Studios-Free
+
+      - name: Build and push the Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

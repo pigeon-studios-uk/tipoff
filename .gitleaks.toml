@@ -1,0 +1,5 @@
+# Gitleaks settings for the shared "secrets" check (https://gitlab.com/pigeon-studios/tools/ci-templates).
+# Uses Gitleaks' own rules, with no exceptions.
+
+[extend]
+useDefault = true

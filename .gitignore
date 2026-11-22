@@ -1,0 +1,49 @@
+# Pigeon Studios .gitignore
+
+# Secrets and local configuration: never commit these.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Build output
+dist/
+build/
+*.zip
+
+# Logs and runtime data
+logs/
+*.log
+*.pid
+cache/
+
+# Database dumps and backups
+*.sql.gz
+*.dump
+backups/
+
+# Editors and operating systems
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tipoff runtime files (never committed, never deployed)
+data/
+database/backups/
+.tipoff-deployed
+.tipoff-restart
+
+# Optional extras for one particular copy (utility/extras.js, utility/hosted.js). Never committed here.
+staff/
+hosted/
