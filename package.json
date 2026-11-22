@@ -2,7 +2,7 @@
   "name": "tipoff",
   "version": "1.0.0",
   "private": true,
-  "description": "A public Discord report bot: members report messages and users in two clicks, and moderators handle each report as a case.",
+  "description": "A Discord report bot: members report a message or a member in two clicks, and every report becomes a case moderators can claim, resolve and act on.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
