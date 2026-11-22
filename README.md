@@ -16,7 +16,7 @@
   <p>
     <a href="https://pigeonstudios.co.uk/apps/tipoff/invite/"><strong>Add Tipoff to your server</strong></a> ·
     <a href="#running-your-own-copy">Run your own</a> ·
-    <a href="https://railway.com/deploy/XlIiwS?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic">Deploy on Railway</a> ·
+    <a href="https://railway.com/deploy/tipoff?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic">Deploy on Railway</a> ·
     <a href="#configuration">Configure</a> ·
     <a href="CHANGELOG.md">Changelog</a> ·
     <a href="https://pigeonstudios.co.uk/apps/tipoff/guide/">Guide</a>
@@ -110,7 +110,7 @@ Copy `.env.example` to `.env` and fill in at least `DISCORD_TOKEN`, `DISCORD_CLI
 
 #### Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/XlIiwS?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/tipoff?referralCode=uCs8YK&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 Railway asks for your bot token and application ID (and, optionally, your privacy policy, terms and support links), then runs Tipoff with its own MySQL database. You don't need a `.env` file: change settings later in the Tipoff service's **Variables**. Railway charges for what it uses; see its pricing.
 
