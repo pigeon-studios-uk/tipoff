@@ -7,10 +7,10 @@
 
   <p>
     <a href="https://github.com/pigeon-studios-uk/tipoff/releases/latest"><img src="https://img.shields.io/github/v/release/pigeon-studios-uk/tipoff?label=release&color=2ea043" alt="Latest release" /></a>
-    <a href="LICENSE.md"><img src="https://img.shields.io/badge/licence-Pigeon%20Studios%20Free-6f42c1" alt="Licence: Pigeon Studios Free Licence" /></a>
-    <img src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=node.js&logoColor=white" alt="Node.js 24 or newer" />
-    <img src="https://img.shields.io/badge/database-MariaDB%20%7C%20MySQL-003545?logo=mariadb&logoColor=white" alt="MariaDB or MySQL" />
-    <img src="https://img.shields.io/badge/intents-Guilds%20only-5865F2?logo=discord&logoColor=white" alt="Guilds intent only" />
+    <a href="LICENSE.md"><img src="assets/badges/licence.svg" alt="Licence: Pigeon Studios Free Licence" /></a>
+    <img src="assets/badges/node.svg" alt="Node.js 24 or newer" />
+    <img src="assets/badges/database.svg" alt="MariaDB or MySQL" />
+    <img src="assets/badges/intents.svg" alt="Guilds intent only" />
   </p>
 
   <p>
