@@ -59,6 +59,16 @@ function card({ sections = [], buttons = [], accent = "brand", ephemeral = true 
   };
 }
 
+/**
+ * The line under a longer message in a language a native speaker hasn't checked yet ("ours" or "community"), asking
+ * for help with it, in that language; null for a reviewed one, English included. t: the strings the message is in.
+ */
+function unreviewed(t) {
+  const language = t?.language;
+  if (!language || language.status === "reviewed" || typeof language.unreviewed !== "function") return null;
+  return language.unreviewed(config.links.translate);
+}
+
 /** A short "couldn't do that" message. title: in the reader's language (English if left out). */
 function error(text, title) {
   return card({ accent: "danger", sections: [`### ${title || require("../strings/en").errors.title}\n${text}`] });
@@ -75,4 +85,4 @@ async function reply(interaction, body) {
   return interaction.reply(body);
 }
 
-module.exports = { ACCENTS, TEXT_LIMIT, card, error, reply, truncate };
+module.exports = { ACCENTS, TEXT_LIMIT, card, error, reply, truncate, unreviewed };

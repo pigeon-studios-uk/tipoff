@@ -68,6 +68,7 @@ async function checkReply(interaction, settings, { heading } = {}) {
     if (posted) sections.push(t.setup.redelivered(posted));
     if (waiting) sections.push(t.setup.stillWaiting(waiting));
   }
+  sections.push(ui.unreviewed(t));
   return ui.card({ accent: problems.length ? "warning" : "success", sections });
 }
 

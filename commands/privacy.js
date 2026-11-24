@@ -25,7 +25,8 @@ module.exports = {
         [p.title, p.asReporter(held.reported), p.asTarget(held.about), held.handled ? p.asModerator(held.handled) : null, held.blocked ? p.blocked : null].filter(Boolean).join("\n"),
         "---",
         `${p.rules(settings.retentionDays)}\n${p.cards}`,
-        p.request(config.links.privacy)
+        p.request(config.links.privacy),
+        ui.unreviewed(t)
       ],
       buttons: [{ label: t.help.buttons.privacy, url: config.links.privacy }, { label: t.help.buttons.support, url: config.links.support }]
     }));

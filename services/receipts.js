@@ -21,7 +21,7 @@ async function send(client, c, settings, guildName) {
     const text = c.status === "resolved" ? t.receipts.resolved(c.number, server) : t.receipts.dismissed(c.number, server);
     try {
       const user = await client.users.fetch(String(r.reporter_id));
-      await user.send(ui.card({ accent: c.status === "resolved" ? "success" : "brand", ephemeral: false, sections: [text, t.receipts.footer] }));
+      await user.send(ui.card({ accent: c.status === "resolved" ? "success" : "brand", ephemeral: false, sections: [text, t.receipts.footer, ui.unreviewed(t)] }));
       sent++;
     } catch (err) {
       logger.info(`Couldn't DM a reporter about case ${c.id}: ${err.code || err.message}`);

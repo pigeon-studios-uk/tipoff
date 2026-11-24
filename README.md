@@ -191,7 +191,7 @@ That's it: members can report straight away. `/setup roles`, `/setup reasons`, `
 
 ## Languages
 
-Tipoff speaks English today, and is built so other languages can be added one file at a time. Each message picks its language like this:
+Tipoff speaks English and German, and is built so other languages can be added one file at a time. Each message picks its language like this:
 
 | What | Language |
 |---|---|
@@ -200,7 +200,7 @@ Tipoff speaks English today, and is built so other languages can be added one fi
 | Outcome DMs to reporters | The language the reporter used when they reported |
 | Command descriptions, choices, and the **Report Message** / **Report User** menu names | Each person's Discord language. Slash command names (`/report`, `/setup`...) stay English everywhere, so guides and moderators share one name |
 
-Anything a language doesn't have yet falls back to English, word by word, so a missing or half-finished translation never breaks anything. Forum status tags are remembered by ID, so changing a server's language later never breaks a forum that already has them.
+A language a native speaker hasn't checked yet shows a short line saying so, in that language, under longer private messages (`/help`, `/privacy`, `/setup`, report receipts and outcome DMs), with a link to help improve it. Anything a language doesn't have yet falls back to English, word by word, so a missing or half-finished translation never breaks anything. Forum status tags are remembered by ID, so changing a server's language later never breaks a forum that already has them.
 
 ### Adding a language
 
