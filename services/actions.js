@@ -6,12 +6,14 @@
  *   - the moderator has the Discord permission for it (Manage Messages in that channel, Timeout, Kick, Ban Members)
  *   - their highest role is above the target's (the server owner is above everyone; nobody can act on the owner)
  *   - Tipoff has the permission, and its highest role is above the target's
- * Each action is written on the case and in Discord's audit log reason ("Tipoff case #142, by @mod: spam").
+ * Each action is written on the case and in Discord's audit log reason ("Tipoff case #142, by @mod: spam"), in the
+ * server's language; what the moderator is told is in their own.
  */
 
 const { PermissionFlagsBits: P } = require("discord.js");
 const cases = require("./cases");
-const t = require("../strings/en");
+const strings = require("../strings");
+const en = require("../strings/en");
 
 const NEEDS = {
   delete: { flag: P.ManageMessages, name: "ManageMessages" },
@@ -28,7 +30,7 @@ class ActionRefused extends Error {
   }
 }
 
-const permName = key => t.setup.perms[key] || key;
+const permName = (key, t = en) => t.setup.perms[key] || key;
 const highest = member => member?.roles?.highest?.position ?? 0;
 
 /**
@@ -36,6 +38,7 @@ const highest = member => member?.roles?.highest?.position ?? 0;
  * member, for timeout/kick) or throws ActionRefused. deps lets tests pass fakes.
  */
 async function check(interaction, action, c, { fetchMember = id => interaction.guild.members.fetch(String(id)) } = {}) {
+  const t = strings.forUser(interaction);
   const need = NEEDS[action];
   if (!need) throw new ActionRefused(t.errors.notAllowed);
   const guild = interaction.guild;
@@ -46,20 +49,20 @@ async function check(interaction, action, c, { fetchMember = id => interaction.g
   if (action === "delete") {
     const channel = guild.channels.cache.get(String(c.target_channel_id)) || await guild.channels.fetch(String(c.target_channel_id)).catch(() => null);
     if (!channel) throw new ActionRefused(r.messageGone);
-    if (!channel.permissionsFor(actor)?.has(need.flag)) throw new ActionRefused(r.youNeed(permName(need.name)));
-    if (!channel.permissionsFor(me)?.has(need.flag)) throw new ActionRefused(r.tipoffNeeds(permName(need.name)));
+    if (!channel.permissionsFor(actor)?.has(need.flag)) throw new ActionRefused(r.youNeed(permName(need.name, t)));
+    if (!channel.permissionsFor(me)?.has(need.flag)) throw new ActionRefused(r.tipoffNeeds(permName(need.name, t)));
     // deleting a staff member's message still needs the role check
-    if (c.target_user_id) await hierarchy(guild, actor, me, c.target_user_id, fetchMember, { allowMissing: true });
+    if (c.target_user_id) await hierarchy(guild, actor, me, c.target_user_id, fetchMember, { allowMissing: true, strings: t });
     return { channel };
   }
 
-  if (!interaction.memberPermissions?.has(need.flag)) throw new ActionRefused(r.youNeed(permName(need.name)));
-  if (!me.permissions.has(need.flag)) throw new ActionRefused(r.tipoffNeeds(permName(need.name)));
-  const member = await hierarchy(guild, actor, me, c.target_user_id, fetchMember, { allowMissing: action === "ban" });
+  if (!interaction.memberPermissions?.has(need.flag)) throw new ActionRefused(r.youNeed(permName(need.name, t)));
+  if (!me.permissions.has(need.flag)) throw new ActionRefused(r.tipoffNeeds(permName(need.name, t)));
+  const member = await hierarchy(guild, actor, me, c.target_user_id, fetchMember, { allowMissing: action === "ban", strings: t });
   return { member };
 }
 
-async function hierarchy(guild, actor, me, targetId, fetchMember, { allowMissing = false } = {}) {
+async function hierarchy(guild, actor, me, targetId, fetchMember, { allowMissing = false, strings: t = en } = {}) {
   const r = t.caseActions.refused;
   if (String(guild.ownerId) === String(targetId)) throw new ActionRefused(r.owner);
   let target = null;
@@ -79,12 +82,14 @@ async function hierarchy(guild, actor, me, targetId, fetchMember, { allowMissing
 }
 
 /**
- * Does the action, after check(). options: { duration (seconds, timeout), reason, deleteMessages (ban) }.
- * Resolves to the line to show the moderator. The case gets an event either way.
+ * Does the action, after check(). options: { duration (seconds, timeout), reason, deleteMessages (ban), server (strings
+ * in the server's language, for the audit log and the case) }. Resolves to the line to show the moderator, in their
+ * language. The case gets an event either way.
  */
-async function run(interaction, action, c, checked, { duration, reason, deleteMessages = false } = {}) {
+async function run(interaction, action, c, checked, { duration, reason, deleteMessages = false, server = en } = {}) {
+  const t = strings.forUser(interaction);
   const by = interaction.user.username;
-  const auditReason = t.caseActions.auditReason(c.number, by, reason).slice(0, 512);
+  const auditReason = server.caseActions.auditReason(c.number, by, reason).slice(0, 512);
   const done = t.caseActions.done;
   const who = `<@${c.target_user_id}>`;
   let line;
@@ -105,7 +110,7 @@ async function run(interaction, action, c, checked, { duration, reason, deleteMe
     const seconds = TIMEOUTS[duration] || 3600;
     await checked.member.timeout(seconds * 1000, auditReason);
     line = done.timedOut(who, t.caseActions.durations[String(seconds)]);
-    detail = `${t.caseActions.durations[String(seconds)]}${reason ? `: ${reason}` : ""}`;
+    detail = `${server.caseActions.durations[String(seconds)]}${reason ? `: ${reason}` : ""}`;
   } else if (action === "kick") {
     await checked.member.kick(auditReason);
     line = done.kicked(who);

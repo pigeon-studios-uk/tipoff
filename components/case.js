@@ -8,6 +8,7 @@
  *   case:do:<action>:<id>                                   that form, sent: checks again, then does it
  *
  * The case must belong to the server the button was pressed in, so a forged custom ID can't reach another server's case.
+ * The forms and replies are in the moderator's own language; the card they change is in the server's.
  */
 
 const { MessageFlags } = require("discord.js");
@@ -19,14 +20,15 @@ const settingsStore = require("../services/settings");
 const actions = require("../services/actions");
 const m = require("../services/modals");
 const ui = require("../services/ui");
-const t = require("../strings/en");
+const strings = require("../strings");
+const en = require("../strings/en");
 
 const done = text => ui.card({ accent: "success", sections: [text] });
 const refused = text => Object.assign(new Error(text), { userMessage: text });
 
 async function load(interaction, id) {
   const c = /^\d+$/.test(String(id)) ? await cases.byId(id) : null;
-  if (!c || String(c.guild_id) !== String(interaction.guildId)) throw refused(t.caseActions.refused.notFound);
+  if (!c || String(c.guild_id) !== String(interaction.guildId)) throw refused(strings.forUser(interaction).caseActions.refused.notFound);
   return c;
 }
 
@@ -39,14 +41,14 @@ async function refresh(interaction, caseId) {
   }
 }
 
-function closeForm(action, c) {
+function closeForm(action, c, t = en) {
   const ca = t.caseActions;
   return m.modal(`case:close:${action}:${c.id}`, action === "resolve" ? ca.resolveTitle(c.number) : ca.dismissTitle(c.number), [
     m.label(ca.closeNote, ca.closeNoteHint, m.textInput("note", { required: false, max: 1000 }))
   ]);
 }
 
-function actionForm(action, c) {
+function actionForm(action, c, t = en) {
   const ca = t.caseActions;
   const reason = m.label(ca.reason, ca.reasonHint, m.textInput("reason", { style: m.TEXT.Short, required: false, max: 300 }));
   if (action === "timeout") {
@@ -76,6 +78,7 @@ module.exports = {
 
   async execute(interaction, args) {
     const [step, first, second] = args;
+    const t = strings.forUser(interaction);
     const ca = t.caseActions;
 
     if (step === "claim" || step === "unclaim" || step === "reopen") {
@@ -92,7 +95,7 @@ module.exports = {
     if (step === "resolve" || step === "dismiss") {
       const c = await load(interaction, first);
       if (cases.CLOSED.includes(c.status)) throw refused(ca.refused.alreadyClosed);
-      return interaction.showModal(closeForm(step, c));
+      return interaction.showModal(closeForm(step, c, t));
     }
 
     if (step === "close") {
@@ -115,7 +118,7 @@ module.exports = {
       if (cases.CLOSED.includes(c.status)) throw refused(ca.refused.alreadyClosed);
       // refuse straight away if they couldn't do it anyway, before asking them to confirm
       await actions.check(interaction, action, c);
-      return interaction.showModal(actionForm(action, c));
+      return interaction.showModal(actionForm(action, c, t));
     }
 
     if (step === "do") {
@@ -126,7 +129,9 @@ module.exports = {
       const confirm = values.checked("confirm");
       if (action !== "timeout" && !confirm.includes("yes")) throw refused(ca.refused.notConfirmed);
       const checked = await actions.check(interaction, action, c);
+      const server = strings.forServer(await settingsStore.get(c.guild_id), interaction.guild);
       const line = await actions.run(interaction, action, c, checked, {
+        server,
         duration: Number(values.radio("duration")) || 3600,
         reason: values.text("reason") || null,
         deleteMessages: confirm.includes("deleteMessages")

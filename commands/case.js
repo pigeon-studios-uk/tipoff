@@ -3,13 +3,15 @@ const cases = require("../services/cases");
 const delivery = require("../services/delivery");
 const { defang, quote } = require("../services/evidence");
 const ui = require("../services/ui");
-const t = require("../strings/en");
+const strings = require("../strings");
+const en = require("../strings/en");
+const { describe } = require("../utility/localize");
 
 const ts = value => `<t:${Math.floor(new Date(value).getTime() / 1000)}:R>`;
 const refused = text => Object.assign(new Error(text), { userMessage: text });
 
-/** /case view: the whole case, with every reporter (anonymous ones stay anonymous) and the timeline. */
-function caseView(c, reps, evs) {
+/** /case view: the whole case, with every reporter (anonymous ones stay anonymous) and the timeline, in t's language. */
+function caseView(c, reps, evs, t = en) {
   const v = t.caseView;
   const cardLink = c.card_channel_id && c.card_message_id ? `https://discord.com/channels/${c.guild_id}/${c.card_channel_id}/${c.card_message_id}` : null;
   const reporters = reps.map(r => `${Number(r.anonymous) ? `**${t.card.anonymous}**` : `<@${r.reporter_id}>`} · ${ts(r.updated_at || r.created_at)}${r.note ? `\n${quote(defang(String(r.note).slice(0, 300)))}` : ""}`);
@@ -30,28 +32,27 @@ module.exports = {
   level: "moderator",
   caseView,
 
-  data: new SlashCommandBuilder()
-    .setName(t.commands.case.name)
-    .setDescription(t.commands.case.description)
+  data: describe(new SlashCommandBuilder().setName(en.commands.case.name), s => s.commands.case.description)
     // who sees it by default; servers can change this in Server Settings › Integrations. Tipoff checks moderator roles itself.
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild)
-    .addSubcommand(sub => sub.setName("view").setDescription(t.commands.case.view)
-      .addIntegerOption(o => o.setName("number").setDescription(t.commands.case.number).setRequired(true).setMinValue(1)))
-    .addSubcommand(sub => sub.setName("note").setDescription(t.commands.case.note)
-      .addIntegerOption(o => o.setName("number").setDescription(t.commands.case.number).setRequired(true).setMinValue(1))
-      .addStringOption(o => o.setName("text").setDescription(t.commands.case.text).setRequired(true).setMaxLength(1000)))
-    .addSubcommand(sub => sub.setName("reopen").setDescription(t.commands.case.reopen)
-      .addIntegerOption(o => o.setName("number").setDescription(t.commands.case.number).setRequired(true).setMinValue(1))),
+    .addSubcommand(sub => describe(sub.setName("view"), s => s.commands.case.view)
+      .addIntegerOption(o => describe(o.setName("number"), s => s.commands.case.number).setRequired(true).setMinValue(1)))
+    .addSubcommand(sub => describe(sub.setName("note"), s => s.commands.case.note)
+      .addIntegerOption(o => describe(o.setName("number"), s => s.commands.case.number).setRequired(true).setMinValue(1))
+      .addStringOption(o => describe(o.setName("text"), s => s.commands.case.text).setRequired(true).setMaxLength(1000)))
+    .addSubcommand(sub => describe(sub.setName("reopen"), s => s.commands.case.reopen)
+      .addIntegerOption(o => describe(o.setName("number"), s => s.commands.case.number).setRequired(true).setMinValue(1))),
 
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const sub = interaction.options.getSubcommand();
+    const t = strings.forUser(interaction);
     const c = await cases.byNumber(interaction.guildId, interaction.options.getInteger("number"));
     if (!c) throw refused(t.caseActions.refused.notFound);
 
-    if (sub === "view") return ui.reply(interaction, caseView(c, await cases.reporters(c.id), await cases.events(c.id)));
+    if (sub === "view") return ui.reply(interaction, caseView(c, await cases.reporters(c.id), await cases.events(c.id), t));
 
     if (sub === "note") {
       await cases.addEvent(c.id, interaction.user.id, "note", interaction.options.getString("text"));

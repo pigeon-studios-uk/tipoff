@@ -1,13 +1,13 @@
 const { ContextMenuCommandBuilder, ApplicationCommandType, InteractionContextType, ApplicationIntegrationType } = require("discord.js");
 const reports = require("../services/reports");
-const t = require("../strings/en");
+const { named } = require("../utility/localize");
 
 // Right-click a member › Apps › Report User
 module.exports = {
   level: "everyone",
 
-  data: new ContextMenuCommandBuilder()
-    .setName(t.commands.reportUser.name)
+  // the name people see in the Apps menu, in their own language
+  data: named(new ContextMenuCommandBuilder(), s => s.commands.reportUser.name)
     .setType(ApplicationCommandType.User)
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild),

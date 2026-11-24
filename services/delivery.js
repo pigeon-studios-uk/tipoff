@@ -9,6 +9,7 @@
  *
  * Where a card goes: reports about staff to the escalation channel (if set), member reports to the member reports
  * channel (if set), everything else to the report channel. A forum gets one post per case, tagged by status.
+ * Everything posted is in the server's language (strings/index.js, serverLocale).
  */
 
 const { PermissionFlagsBits, ChannelType, DiscordAPIError } = require("discord.js");
@@ -19,18 +20,18 @@ const settingsStore = require("./settings");
 const forumTags = require("./forumTags");
 const alerts = require("./alerts");
 const evidenceTools = require("./evidence");
-const t = require("../strings/en");
+const strings = require("../strings");
 
 const FORUMS = new Set([ChannelType.GuildForum, ChannelType.GuildMedia]);
 const GONE = new Set([10003, 10008]);            // Unknown Channel, Unknown Message
 const NO_ACCESS = new Set([50001, 50013]);       // Missing Access, Missing Permissions
 const ARCHIVED = 50083;                          // Thread is archived
 
-/** Which channel a case's card belongs in, and which setting that is (for messages). */
+/** Which channel a case's card belongs in, and which setting that is (a key of setup.channelNames, for alerts). */
 function destination(c, settings) {
-  if (Number(c.escalated) && settings.escalationChannelId) return { channelId: settings.escalationChannelId, what: t.setup.channelNames.escalation };
-  if (c.kind === "user" && settings.userReportChannelId) return { channelId: settings.userReportChannelId, what: t.setup.channelNames.user };
-  return { channelId: settings.reportChannelId, what: t.setup.channelNames.report };
+  if (Number(c.escalated) && settings.escalationChannelId) return { channelId: settings.escalationChannelId, what: "escalation" };
+  if (c.kind === "user" && settings.userReportChannelId) return { channelId: settings.userReportChannelId, what: "user" };
+  return { channelId: settings.reportChannelId, what: "report" };
 }
 
 /** What Tipoff may do in this server, for the Actions menu. */
@@ -55,14 +56,17 @@ async function view(client, caseId, extra = {}) {
   const hist = c.target_user_id ? await cases.history(c.guild_id, c.target_user_id, c.id) : null;
   const linkedRow = c.linked_case_id ? await cases.byId(c.linked_case_id) : null;
   const guild = client.guilds.cache.get(String(c.guild_id));
-  return { c, ev, reps, settings, hist, guild, linked: linkedRow ? { number: linkedRow.number, status: linkedRow.status } : null, botCan: botCan(guild, c), ...extra };
+  return {
+    c, ev, reps, settings, hist, guild, strings: strings.forServer(settings, guild),
+    linked: linkedRow ? { number: linkedRow.number, status: linkedRow.status } : null, botCan: botCan(guild, c), ...extra
+  };
 }
 
-/** Problem text for a Discord error, or null if it isn't a "can't post here" error. */
+/** The problem for a Discord error, as a key of alerts.problems ("gone", "noAccess"), or null if it isn't a "can't post here" error. */
 function problemFor(err) {
   const code = err instanceof DiscordAPIError || typeof err?.code === "number" ? err.code : null;
-  if (GONE.has(code)) return "it can't be found (it may have been deleted)";
-  if (NO_ACCESS.has(code)) return "Tipoff doesn't have permission to post there";
+  if (GONE.has(code)) return "gone";
+  if (NO_ACCESS.has(code)) return "noAccess";
   return null;
 }
 
@@ -97,7 +101,7 @@ async function deliver(client, caseId, { ping = false } = {}) {
       const channel = await fetchChannel(client, c.card_channel_id);
       if (channel) {
         await editCard(channel, c, v);
-        await syncForumPost(channel, c, settings);
+        await syncForumPost(channel, c, settings, v.strings);
         if (!Number(c.delivered)) await cases.setCard(c.id, c.card_channel_id, c.card_message_id);
         return { delivered: true };
       }
@@ -118,8 +122,8 @@ async function deliver(client, caseId, { ping = false } = {}) {
     const body = cards.render(v);
     let posted;
     if (FORUMS.has(channel.type)) {
-      const { tags } = await forumTags.ensure(channel, c.guild_id);
-      const thread = await channel.threads.create({ name: cards.threadName(c, v.ev), message: { ...body, files }, appliedTags: forumTags.tagsFor(c, tags) });
+      const { tags } = await forumTags.ensure(channel, c.guild_id, { strings: v.strings });
+      const thread = await channel.threads.create({ name: cards.threadName(c, v.ev, v.strings), message: { ...body, files }, appliedTags: forumTags.tagsFor(c, tags) });
       posted = { channelId: thread.id, messageId: thread.id };
     } else {
       const message = await channel.send({ ...body, files });
@@ -133,7 +137,7 @@ async function deliver(client, caseId, { ping = false } = {}) {
     const problem = problemFor(err);
     if (!problem) throw err;
     await cases.markUndelivered(c.id);
-    logger.warn(`Case ${c.id} in server ${c.guild_id} is waiting: ${problem}`);
+    logger.warn(`Case ${c.id} in server ${c.guild_id} is waiting: ${strings.t().alerts.problems[problem]}`);
     await alerts.failing(client, c.guild_id, settings, what, problem).catch(e => logger.warn(`Alert failed: ${e.message}`));
     return { delivered: false, problem };
   }
@@ -152,10 +156,10 @@ async function editCard(channel, c, v) {
 }
 
 /** Keeps a forum post's tags in step with the case, and closes the post when the case closes (a setting). */
-async function syncForumPost(channel, c, settings) {
+async function syncForumPost(channel, c, settings, s) {
   if (!channel.isThread?.() || !FORUMS.has(channel.parent?.type)) return;
   try {
-    const { tags } = await forumTags.ensure(channel.parent, c.guild_id);
+    const { tags } = await forumTags.ensure(channel.parent, c.guild_id, { strings: s });
     const wanted = forumTags.tagsFor(c, tags);
     const kept = (channel.appliedTags || []).filter(id => !Object.values(tags).includes(String(id)));
     const next = [...new Set([...kept, ...wanted])].slice(0, 5);
@@ -178,7 +182,7 @@ async function pingUrgent(client, caseId) {
     const channel = await fetchChannel(client, c.card_channel_id);
     if (!channel) return false;
     await channel.send({
-      content: t.card.urgent(`<@&${settings.urgentRoleId}>`) + ` · #${c.number}`,
+      content: strings.forServer(settings, client.guilds.cache.get(String(c.guild_id))).card.urgent(`<@&${settings.urgentRoleId}>`) + ` · #${c.number}`,
       reply: { messageReference: String(c.card_message_id), failIfNotExists: false },
       allowedMentions: { parse: [], roles: [settings.urgentRoleId] }
     });

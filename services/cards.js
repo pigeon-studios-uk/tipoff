@@ -11,7 +11,7 @@
 
 const ui = require("./ui");
 const { defang, quote, planAttachments } = require("./evidence");
-const t = require("../strings/en");
+const en = require("../strings/en");
 
 const T = { ActionRow: 1, Button: 2, StringSelect: 3, Section: 9, TextDisplay: 10, Thumbnail: 11, MediaGallery: 12, File: 13, Separator: 14, Container: 17 };
 const STYLE = { Primary: 1, Secondary: 2, Success: 3, Danger: 4, Link: 5 };
@@ -31,28 +31,28 @@ function jumpUrl(c) {
   return c.kind === "message" && c.target_message_id ? `https://discord.com/channels/${c.guild_id}/${c.target_channel_id}/${c.target_message_id}` : null;
 }
 
-function whoWrote(author) {
+function whoWrote(author, s = en) {
   if (!author) return "?";
   const clean = name => String(name || "").replace(/[*_`~|<>@]/g, "").slice(0, 80) || "?";
-  if (author.kind === "webhook") return t.card.webhook(clean(author.webhookName || "webhook"));
-  if (author.kind === "app") return t.card.app(mention(author.appUserId));
-  if (author.kind === "bot") return t.card.bot(mention(author.userId));
+  if (author.kind === "webhook") return s.card.webhook(clean(author.webhookName || "webhook"));
+  if (author.kind === "app") return s.card.app(mention(author.appUserId));
+  if (author.kind === "bot") return s.card.bot(mention(author.userId));
   return mention(author.userId);
 }
 
 /** The reported text, embeds, stickers and poll as text blocks. */
-function messageText(ev) {
+function messageText(ev, s = en) {
   const parts = [];
   if (ev.content) parts.push(quote(defang(ev.content)));
   if (ev.componentText) parts.push(quote(defang(ev.componentText)));
-  if (!ev.content && !ev.componentText && !(ev.embeds || []).length && !(ev.attachments || []).length) parts.push(t.card.noText);
+  if (!ev.content && !ev.componentText && !(ev.embeds || []).length && !(ev.attachments || []).length) parts.push(s.card.noText);
   for (const e of ev.embeds || []) {
     const lines = [e.author && `**${e.author}**`, e.title && `**${e.title}**`, e.description, ...(e.fields || []).map(f => `**${f.name}**: ${f.value}`), e.url]
       .filter(Boolean).map(line => defang(line));
-    if (lines.length) parts.push(`-# ${t.card.embeds}\n${quote(lines.join("\n"))}`);
+    if (lines.length) parts.push(`-# ${s.card.embeds}\n${quote(lines.join("\n"))}`);
   }
-  if ((ev.stickers || []).length) parts.push(t.card.stickers(ev.stickers.join(", ")));
-  if (ev.poll) parts.push(t.card.poll(defang(ev.poll)));
+  if ((ev.stickers || []).length) parts.push(s.card.stickers(ev.stickers.join(", ")));
+  if (ev.poll) parts.push(s.card.poll(defang(ev.poll)));
   return parts.join("\n");
 }
 
@@ -62,7 +62,7 @@ function hasDefangedLinks(ev) {
 }
 
 /** Media gallery and file components for attachments copied onto the card, and links for the rest. */
-function attachmentParts(ev) {
+function attachmentParts(ev, s = en) {
   const copied = (ev.attachments || []).filter(a => a.copiedAs);
   const links = (ev.attachments || []).filter(a => !a.copiedAs);
   const parts = [];
@@ -70,69 +70,69 @@ function attachmentParts(ev) {
   const files = copied.filter(a => !(a.contentType || "").startsWith("image/"));
   if (images.length) parts.push({ type: T.MediaGallery, items: images.slice(0, 10).map(a => ({ media: { url: `attachment://${a.copiedAs}` }, spoiler: true })) });
   for (const a of files.slice(0, 3)) parts.push({ type: T.File, file: { url: `attachment://${a.copiedAs}` }, spoiler: true });
-  if (links.length) parts.push(text(t.card.tooBig(links.map(a => `[${a.name.replace(/[[\]]/g, "")}](${a.url})`).join(" · "))));
+  if (links.length) parts.push(text(s.card.tooBig(links.map(a => `[${a.name.replace(/[[\]]/g, "")}](${a.url})`).join(" · "))));
   return parts;
 }
 
-function reporterLines(reps) {
+function reporterLines(reps, s = en) {
   const shown = reps.slice(-MAX_REPORTERS);
   return shown.map(r => {
-    const who = Number(r.anonymous) ? `**${t.card.anonymous}**` : mention(r.reporter_id);
-    const note = r.note ? quote(cut(defang(String(r.note)), NOTE_MAX)) : `-# ${t.card.noNote}`;
+    const who = Number(r.anonymous) ? `**${s.card.anonymous}**` : mention(r.reporter_id);
+    const note = r.note ? quote(cut(defang(String(r.note)), NOTE_MAX)) : `-# ${s.card.noNote}`;
     return `${who} · ${ts(r.updated_at || r.created_at)}${Number(r.urgent) ? " · ⚠" : ""}\n${note}`;
   });
 }
 
 /**
  * Builds the card. view: { c (tp_cases row), ev (evidence), reps (reporters), hist, settings, botCan, linked, reposted,
- * ping } -> { flags, components, allowedMentions }. Nothing about whether it's a first post or an edit: delivery.js
- * sends it either way.
+ * ping, strings (the server's language; English if left out) } -> { flags, components, allowedMentions }. Nothing about
+ * whether it's a first post or an edit: delivery.js sends it either way.
  */
-function render({ c, ev = {}, reps = [], hist = null, settings = {}, botCan = {}, linked = null, reposted = false, ping = false }) {
-  const status = t.card.status[c.status] || c.status;
+function render({ c, ev = {}, reps = [], hist = null, settings = {}, botCan = {}, linked = null, reposted = false, ping = false, strings: s = en }) {
+  const status = s.card.status[c.status] || c.status;
   const header = [
-    `### #${c.number} · ${t.card.kinds[c.kind] || c.kind} · ${c.reason}`,
-    `**${status}** · ${t.card.reports(reps.length || 1)}`,
-    Number(c.escalated) ? `**${t.card.escalated}**` : null,
-    Number(c.escalated) && !settings.escalationChannelId ? t.card.escalatedFallback : null
+    `### #${c.number} · ${s.card.kinds[c.kind] || c.kind} · ${c.reason}`,
+    `**${status}** · ${s.card.reports(reps.length || 1)}`,
+    Number(c.escalated) ? `**${s.card.escalated}**` : null,
+    Number(c.escalated) && !settings.escalationChannelId ? s.card.escalatedFallback : null
   ].filter(Boolean).join("\n");
 
   const body = [];
   let mainText = "";
   if (c.kind === "message") {
-    mainText = messageText(ev);
-    const flags = [ev.forwarded && t.card.forwarded, ev.editedAt && t.card.edited].filter(Boolean).join(" · ");
-    const by = [t.card.by(whoWrote(ev.author), ts(ev.createdAt, "f"), ev.channelId ? `<#${ev.channelId}>` : null), flags].filter(Boolean).join(" · ");
-    const reply = ev.replyTo ? t.card.reply(`[a message](https://discord.com/channels/${c.guild_id}/${ev.channelId}/${ev.replyTo.messageId})`) : null;
-    body.push({ key: "main", value: mainText }, { key: "by", value: [by, reply, hasDefangedLinks(ev) ? t.card.linksNote : null].filter(Boolean).join("\n") });
+    mainText = messageText(ev, s);
+    const flags = [ev.forwarded && s.card.forwarded, ev.editedAt && s.card.edited].filter(Boolean).join(" · ");
+    const by = [s.card.by(whoWrote(ev.author, s), ts(ev.createdAt, "f"), ev.channelId ? `<#${ev.channelId}>` : null), flags].filter(Boolean).join(" · ");
+    const reply = ev.replyTo ? s.card.reply(`[a message](https://discord.com/channels/${c.guild_id}/${ev.channelId}/${ev.replyTo.messageId})`) : null;
+    body.push({ key: "main", value: mainText }, { key: "by", value: [by, reply, hasDefangedLinks(ev) ? s.card.linksNote : null].filter(Boolean).join("\n") });
   } else if (c.kind === "user") {
     const name = [ev.globalName && `**${ev.globalName.replace(/[*_`~|]/g, "")}**`, ev.nick && `(${ev.nick.replace(/[*_`~|]/g, "")})`].filter(Boolean).join(" ");
     const lines = [
       `${mention(ev.userId)}${name ? ` · ${name}` : ""}`,
-      `-# ${t.card.memberDates(ts(ev.createdAt), ev.joinedAt ? ts(ev.joinedAt) : null)}`,
-      (ev.roleIds || []).length ? t.card.roles(ev.roleIds.slice(0, 10).map(id => `<@&${id}>`).join(" ")) : null,
-      ev.timedOutUntil && ev.timedOutUntil > Date.now() ? t.card.timedOut(ts(ev.timedOutUntil, "f")) : null,
-      ev.inServer === false ? t.card.leftServer : null
+      `-# ${s.card.memberDates(ts(ev.createdAt), ev.joinedAt ? ts(ev.joinedAt) : null)}`,
+      (ev.roleIds || []).length ? s.card.roles(ev.roleIds.slice(0, 10).map(id => `<@&${id}>`).join(" ")) : null,
+      ev.timedOutUntil && ev.timedOutUntil > Date.now() ? s.card.timedOut(ts(ev.timedOutUntil, "f")) : null,
+      ev.inServer === false ? s.card.leftServer : null
     ].filter(Boolean);
     body.push({ key: "user", value: lines.join("\n"), avatar: ev.avatarUrl });
   } else {
-    mainText = ev.content ? quote(defang(ev.content)) : t.card.noText;
+    mainText = ev.content ? quote(defang(ev.content)) : s.card.noText;
     body.push({ key: "main", value: mainText });
   }
 
   const context = [
-    hist && c.target_user_id ? `-# ${t.card.history(hist.total, hist.resolved, hist.dismissed)}` : null,
-    linked ? `-# ${t.card.earlier(linked.number, t.card.status[linked.status] || linked.status)}` : null
+    hist && c.target_user_id ? `-# ${s.card.history(hist.total, hist.resolved, hist.dismissed)}` : null,
+    linked ? `-# ${s.card.earlier(linked.number, s.card.status[linked.status] || linked.status)}` : null
   ].filter(Boolean).join("\n");
 
-  const reporterBlock = [`**${t.card.reportersHeading}**`, ...reporterLines(reps),
-    reps.length > MAX_REPORTERS ? `-# ${t.card.moreReporters(reps.length - MAX_REPORTERS, c.number)}` : null].filter(Boolean).join("\n");
+  const reporterBlock = [`**${s.card.reportersHeading}**`, ...reporterLines(reps, s),
+    reps.length > MAX_REPORTERS ? `-# ${s.card.moreReporters(reps.length - MAX_REPORTERS, c.number)}` : null].filter(Boolean).join("\n");
 
   const state = [
-    c.status === "claimed" && c.claimed_by ? t.card.claimedBy(mention(c.claimed_by), ts(c.claimed_at)) : null,
-    (c.status === "resolved" || c.status === "dismissed") && c.closed_by ? t.card.closedBy(status, mention(c.closed_by), ts(c.closed_at)) : null,
-    (c.status === "resolved" || c.status === "dismissed") && c.close_note ? t.card.note(defang(String(c.close_note))) : null,
-    reposted ? t.card.reposted : null
+    c.status === "claimed" && c.claimed_by ? s.card.claimedBy(mention(c.claimed_by), ts(c.claimed_at)) : null,
+    (c.status === "resolved" || c.status === "dismissed") && c.closed_by ? s.card.closedBy(status, mention(c.closed_by), ts(c.closed_at)) : null,
+    (c.status === "resolved" || c.status === "dismissed") && c.close_note ? s.card.note(defang(String(c.close_note))) : null,
+    reposted ? s.card.reposted : null
   ].filter(Boolean).join("\n");
 
   // keep within Discord's text limit: trim the reported text, then the reporters, never the header
@@ -145,20 +145,20 @@ function render({ c, ev = {}, reps = [], hist = null, settings = {}, botCan = {}
   }
   const inner = [text(header)];
   for (const part of body) {
-    if (part.key === "main") inner.push(text(cut(part.value || t.card.noText, Math.max(100, budget))));
+    if (part.key === "main") inner.push(text(cut(part.value || s.card.noText, Math.max(100, budget))));
     else if (part.key === "user" && part.avatar) inner.push({ type: T.Section, components: [text(part.value)], accessory: { type: T.Thumbnail, media: { url: part.avatar } } });
     else if (part.value) inner.push(text(part.value));
   }
-  inner.push(...attachmentParts(ev));
+  inner.push(...attachmentParts(ev, s));
   if (context) inner.push(text(context));
   inner.push(divider(), text(reportersText));
   if (state) inner.push(divider(), text(state));
 
   const components = [];
   const urgentRole = settings.urgentRoleId;
-  if (Number(c.urgent)) components.push(text(urgentRole ? `**${t.card.urgent(`<@&${urgentRole}>`)}**` : `**${t.card.urgentNoRole}**`));
+  if (Number(c.urgent)) components.push(text(urgentRole ? `**${s.card.urgent(`<@&${urgentRole}>`)}**` : `**${s.card.urgentNoRole}**`));
   components.push({ type: T.Container, accent_color: ACCENT[c.status] ?? ACCENT.open, components: inner });
-  components.push(...buttonRows(c, botCan, ev));
+  components.push(...buttonRows(c, botCan, ev, s));
 
   return {
     flags: FLAGS.IsComponentsV2,
@@ -172,36 +172,37 @@ function button(label, style, customId) {
 }
 
 /** The buttons under the card, and the Actions menu with only what Tipoff can do in this server. */
-function buttonRows(c, botCan = {}, ev = {}) {
+function buttonRows(c, botCan = {}, ev = {}, s = en) {
   const id = c.id;
   const jump = jumpUrl(c);
   const row = [];
-  if (c.status === "open") row.push(button(t.card.buttons.claim, STYLE.Primary, `case:claim:${id}`));
-  if (c.status === "claimed") row.push(button(t.card.buttons.unclaim, STYLE.Secondary, `case:unclaim:${id}`));
+  if (c.status === "open") row.push(button(s.card.buttons.claim, STYLE.Primary, `case:claim:${id}`));
+  if (c.status === "claimed") row.push(button(s.card.buttons.unclaim, STYLE.Secondary, `case:unclaim:${id}`));
   if (c.status === "open" || c.status === "claimed") {
-    row.push(button(t.card.buttons.resolve, STYLE.Success, `case:resolve:${id}`), button(t.card.buttons.dismiss, STYLE.Secondary, `case:dismiss:${id}`));
+    row.push(button(s.card.buttons.resolve, STYLE.Success, `case:resolve:${id}`), button(s.card.buttons.dismiss, STYLE.Secondary, `case:dismiss:${id}`));
   } else {
-    row.push(button(t.card.buttons.reopen, STYLE.Secondary, `case:reopen:${id}`));
+    row.push(button(s.card.buttons.reopen, STYLE.Secondary, `case:reopen:${id}`));
   }
-  if (jump) row.push({ type: T.Button, style: STYLE.Link, label: t.card.buttons.jump, url: jump });
+  if (jump) row.push({ type: T.Button, style: STYLE.Link, label: s.card.buttons.jump, url: jump });
   const rows = [{ type: T.ActionRow, components: row }];
 
   if (c.status === "open" || c.status === "claimed") {
-    const a = t.card.actions;
+    const a = s.card.actions;
     const options = [];
     if (c.kind === "message" && botCan.delete && !ev.deleted) options.push({ label: a.delete, value: "delete", description: a.deleteHint });
     if (c.target_user_id && botCan.timeout) options.push({ label: a.timeout, value: "timeout", description: a.timeoutHint });
     if (c.target_user_id && botCan.kick) options.push({ label: a.kick, value: "kick", description: a.kickHint });
     if (c.target_user_id && botCan.ban) options.push({ label: a.ban, value: "ban", description: a.banHint });
-    if (options.length) rows.push({ type: T.ActionRow, components: [{ type: T.StringSelect, custom_id: `case:act:${id}`, placeholder: t.card.buttons.actions, options }] });
+    if (options.length) rows.push({ type: T.ActionRow, components: [{ type: T.StringSelect, custom_id: `case:act:${id}`, placeholder: s.card.buttons.actions, options }] });
   }
   return rows;
 }
 
 /** The forum post's name: "#142 · @someone · Spam or scam", within Discord's 100 characters. */
-function threadName(c, ev) {
-  const who = c.kind === "user" ? `@${ev.username || "member"}` : c.kind === "message" ? `@${ev.author?.name || "message"}` : t.card.kinds.general;
-  return cut(t.card.threadName(c.number, who, c.reason), 100);
+function threadName(c, ev, s = en) {
+  const fallback = s.card.threadFallback;
+  const who = c.kind === "user" ? `@${ev.username || fallback.user}` : c.kind === "message" ? `@${ev.author?.name || fallback.message}` : s.card.kinds.general;
+  return cut(s.card.threadName(c.number, who, c.reason), 100);
 }
 
 /** Every text display's content in a rendered card, joined. For tests and length checks. */

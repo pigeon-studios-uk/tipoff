@@ -10,7 +10,7 @@ const { PermissionFlagsBits } = require("discord.js");
 const sqlStore = require("./sqlStore");
 const logger = require("./logger");
 const ui = require("./ui");
-const t = require("../strings/en");
+const strings = require("../strings");
 
 const EVERY_MS = 6 * 60 * 60 * 1000;
 
@@ -26,11 +26,17 @@ async function clear(guildId, kind, { query = sqlStore.query } = {}) {
   await query("DELETE FROM tp_alerts WHERE guild_id = ? AND kind = ?", [guildId, kind]);
 }
 
-/** Tells the admins. what: which channel ("the escalation channel"); problem: why, in plain words. */
+/**
+ * Tells the admins, in the server's language. what: which channel, as a key of setup.channelNames ("escalation");
+ * problem: why, as a key of alerts.problems ("noAccess"). Text that isn't a key is shown as it is.
+ */
 async function failing(client, guildId, settings, what, problem, { kind = "delivery" } = {}) {
   if (!(await take(guildId, kind))) return false;
   const guild = client.guilds.cache.get(String(guildId));
   if (!guild) return false;
+  const t = strings.forServer(settings, guild);
+  what = t.setup.channelNames[what] || what;
+  problem = t.alerts.problems[problem] || problem;
   const body = ui.card({ accent: "warning", ephemeral: false, sections: [t.alerts.failing(what, problem)] });
 
   const report = settings.reportChannelId ? guild.channels.cache.get(settings.reportChannelId) : null;

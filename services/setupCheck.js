@@ -6,7 +6,9 @@
 
 const { PermissionFlagsBits: P, ChannelType } = require("discord.js");
 const forumTags = require("./forumTags");
-const t = require("../strings/en");
+const settingsStore = require("./settings");
+const strings = require("../strings");
+const en = require("../strings/en");
 
 const FORUMS = new Set([ChannelType.GuildForum, ChannelType.GuildMedia]);
 const THREADS = new Set([ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.AnnouncementThread]);
@@ -26,12 +28,14 @@ function missingIn(channel, me, needed = neededFor(channel)) {
 }
 
 /**
- * Runs every check. Resolves to [problem text] (empty = all good). guild is discord.js's Guild; fetchChannel lets
- * threads that aren't cached be found.
+ * Runs every check. Resolves to [problem text] (empty = all good), in the language of whoever asked (strings); the
+ * forum tags it names are in the server's language, since that's what Tipoff makes them in. guild is discord.js's
+ * Guild; fetchChannel lets threads that aren't cached be found.
  */
-async function run(guild, settings, { fetchChannel = id => guild.channels.fetch(String(id)).catch(() => null), ensureTags = forumTags.ensure } = {}) {
+async function run(guild, settings, { fetchChannel = id => guild.channels.fetch(String(id)).catch(() => null), ensureTags = forumTags.ensure, strings: t = en } = {}) {
   const problems = [];
   const p = t.setup.problems;
+  const server = strings.forServer(settings, guild);
   const me = guild.members.me;
   if (!settings.reportChannelId) return [p.noChannel];
 
@@ -52,10 +56,10 @@ async function run(guild, settings, { fetchChannel = id => guild.channels.fetch(
     if (missing.length) problems.push(p.missingPerms(`<#${id}>`, missing.map(name => t.setup.perms[name] || name).join(", ")));
     if (FORUMS.has(channel.type) && !missing.length) {
       try {
-        const result = await ensureTags(channel, guild.id);
+        const result = await ensureTags(channel, guild.id, { strings: server });
         if (result.missing.length) problems.push(p.noTags(`<#${id}>`, result.missing.join(", ")));
       } catch {
-        problems.push(p.noTags(`<#${id}>`, forumTags.STATUSES.map(forumTags.tagName).join(", ")));
+        problems.push(p.noTags(`<#${id}>`, forumTags.STATUSES.map(status => forumTags.tagName(status, server)).join(", ")));
       }
     }
   }
@@ -68,8 +72,14 @@ async function run(guild, settings, { fetchChannel = id => guild.channels.fetch(
   return problems;
 }
 
-/** The settings as readable lines, for /setup replies. */
-function summary(settings) {
+/** The server's language as shown in /setup: its name, and whether it's chosen or the server's Discord language. */
+function languageName(settings, guild, t = en) {
+  const name = strings.forServer(settings, guild).language.name;
+  return settings.language && strings.supported(settings.language) ? name : t.setup.languageAuto(name);
+}
+
+/** The settings as readable lines, for /setup replies, in the language of whoever asked (strings). */
+function summary(settings, { strings: t = en, guild = null } = {}) {
   const none = t.setup.notNeeded.replace(/^-# /, "");
   const channel = id => (id ? `<#${id}>` : none);
   const roles = list => (list.length ? list.map(id => `<@&${id}>`).join(" ") : none);
@@ -81,7 +91,8 @@ function summary(settings) {
     moderators: roles(settings.moderatorRoleIds),
     staff: roles(settings.staffRoleIds),
     anonymous: settings.anonymous,
-    reasons: settings.reasons.join(", "),
+    reasons: settingsStore.reasonsFor(settings, strings.forServer(settings, guild)).join(", "),
+    language: languageName(settings, guild, t),
     reporterCooldown: settings.reporterCooldownMinutes,
     maxOpen: settings.maxOpenReports,
     urgentCooldown: settings.urgentCooldownMinutes,
@@ -91,4 +102,4 @@ function summary(settings) {
   });
 }
 
-module.exports = { neededFor, missingIn, run, summary, FORUMS, THREADS };
+module.exports = { neededFor, missingIn, run, summary, languageName, FORUMS, THREADS };

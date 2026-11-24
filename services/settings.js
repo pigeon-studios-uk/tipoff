@@ -4,6 +4,7 @@
  */
 
 const sqlStore = require("./sqlStore");
+const strings = require("../strings");
 const t = require("../strings/en");
 
 const LIMITS = {
@@ -36,11 +37,22 @@ function shape(row, roles = [], reasons = []) {
     outcomeDms: Boolean(Number(r.outcome_dms || 0)),
     closeForumPosts: r.close_forum_posts === undefined ? true : Boolean(Number(r.close_forum_posts)),
     retentionDays: Number(r.retention_days ?? 90),
+    // the /setup language choice (a Discord locale), or null for the server's own Discord language (strings/index.js)
+    language: r.language ? String(r.language) : null,
     moderatorRoleIds: roles.filter(x => x.kind === "moderator").map(x => String(x.role_id)),
     staffRoleIds: roles.filter(x => x.kind === "staff").map(x => String(x.role_id)),
     customReasons: own,
+    // in English; reasonsFor() gives them in the server's language
     reasons: [...(own.length ? own : t.defaultReasons), t.otherReason]
   };
+}
+
+/**
+ * The reasons a report can be filed under, as saved on the case: the server's own, or the defaults in the server's
+ * language (strings), always ending with Other.
+ */
+function reasonsFor(settings, s = t) {
+  return [...(settings.customReasons.length ? settings.customReasons : s.defaultReasons), s.otherReason];
 }
 
 async function get(guildId, { query = sqlStore.query } = {}) {
@@ -91,14 +103,15 @@ async function saveRoles(guildId, actorId, { moderators = [], staff = [] }, { tr
  * Turns the reasons box into a list, or throws a { userMessage } error. An empty box means "use the defaults".
  * "Other" is always added by Tipoff, so a line saying "Other" is dropped.
  */
-function parseReasons(text) {
+function parseReasons(text, { strings: s = t, others = [] } = {}) {
+  const other = new Set([t.otherReason, s.otherReason, ...others].map(word => word.toLowerCase()));
   const lines = String(text || "").split(/\r?\n/).map(line => line.trim().replace(/\s+/g, " ")).filter(Boolean)
-    .filter(line => line.toLowerCase() !== t.otherReason.toLowerCase());
+    .filter(line => !other.has(line.toLowerCase()));
   // the first spelling of each reason wins ("Spam" then "spam" keeps "Spam")
   const seen = new Set();
   const unique = lines.filter(line => !seen.has(line.toLowerCase()) && seen.add(line.toLowerCase()));
-  if (unique.length > MAX_REASONS) throw Object.assign(new Error("too many reasons"), { userMessage: t.setup.tooManyReasons });
-  if (unique.some(line => line.length > MAX_REASON_LENGTH)) throw Object.assign(new Error("reason too long"), { userMessage: t.setup.reasonTooLong });
+  if (unique.length > MAX_REASONS) throw Object.assign(new Error("too many reasons"), { userMessage: s.setup.tooManyReasons });
+  if (unique.some(line => line.length > MAX_REASON_LENGTH)) throw Object.assign(new Error("reason too long"), { userMessage: s.setup.reasonTooLong });
   return unique;
 }
 
@@ -114,12 +127,12 @@ async function saveReasons(guildId, actorId, reasons, { transaction = sqlStore.t
 }
 
 /** Checks a number from the limits form, or throws a { userMessage } error. */
-function parseLimit(column, raw, label) {
+function parseLimit(column, raw, label, s = t) {
   const [min, max] = LIMITS[column];
   const text = String(raw ?? "").trim();
   const value = Number(text);
   if (!/^\d+$/.test(text) || value < min || value > max) {
-    throw Object.assign(new Error(`bad ${column}`), { userMessage: t.setup.invalidNumber(label, min, max) });
+    throw Object.assign(new Error(`bad ${column}`), { userMessage: s.setup.invalidNumber(label, min, max) });
   }
   return value;
 }
@@ -135,4 +148,16 @@ async function saveLimits(guildId, actorId, v, { query = sqlStore.query, now = n
   await audit(guildId, actorId, "setup.limits", v, { query, now });
 }
 
-module.exports = { LIMITS, MAX_REASONS, MAX_ROLES, shape, get, audit, saveChannels, saveRoles, parseReasons, saveReasons, parseLimit, saveLimits };
+/** /setup language. language: a Discord locale Tipoff has a file for, or null for the server's own Discord language. */
+async function saveLanguage(guildId, actorId, language, { query = sqlStore.query, now = new Date() } = {}) {
+  const value = language && strings.supported(language) ? String(language) : null;
+  await ensureRow(guildId, query, now);
+  await query("UPDATE tp_guilds SET language = ?, updated_at = ? WHERE guild_id = ?", [value, now, guildId]);
+  await audit(guildId, actorId, "setup.language", { language: value }, { query, now });
+  return value;
+}
+
+module.exports = {
+  LIMITS, MAX_REASONS, MAX_ROLES, shape, reasonsFor, get, audit, saveChannels, saveRoles, parseReasons, saveReasons, parseLimit,
+  saveLimits, saveLanguage
+};

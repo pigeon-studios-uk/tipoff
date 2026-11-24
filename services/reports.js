@@ -22,6 +22,7 @@ const cases = require("./cases");
 const delivery = require("./delivery");
 const m = require("./modals");
 const ui = require("./ui");
+const strings = require("../strings");
 const t = require("../strings/en");
 
 const DRAFT_MAX_AGE_MS = 30 * 60 * 1000;
@@ -35,18 +36,23 @@ class Refusal extends Error {
   }
 }
 
-function refusalText(check) {
-  const r = t.report.refused;
+function refusalText(check, s = t) {
+  const r = s.report.refused;
   if (check.reason === "blocked") return r.blocked;
   if (check.reason === "cooldown") return r.cooldown(check.minutes);
   if (check.reason === "tooManyOpen") return r.tooManyOpen(check.open);
-  return r[check.reason] || t.errors.notAllowed;
+  return r[check.reason] || s.errors.notAllowed;
 }
 
-/** The report form (at most 5 parts). kind: message | user | general. */
-function buildForm(kind, settings, { customId, preview = null } = {}) {
-  const tr = t.report;
-  const reasons = m.label(tr.reason, tr.reasonHint, m.radio("reason", settings.reasons.map(label => ({ value: label, label }))));
+/**
+ * The report form (at most 5 parts). kind: message | user | general. The form is in the reporter's language (strings);
+ * each reason's value is the same reason in the server's language (server), which is what the case is saved under.
+ */
+function buildForm(kind, settings, { customId, preview = null, strings: s = t, server = t } = {}) {
+  const tr = s.report;
+  const saved = settingsStore.reasonsFor(settings, server);
+  const shown = settingsStore.reasonsFor(settings, s);
+  const reasons = m.label(tr.reason, tr.reasonHint, m.radio("reason", saved.map((value, i) => ({ value, label: shown[i] }))));
   const options = [];
   if (settings.urgentRoleId) options.push({ value: "urgent", label: tr.urgent, description: tr.urgentHint });
   if (settings.anonymous) options.push({ value: "anonymous", label: tr.anonymous, description: tr.anonymousHint });
@@ -69,15 +75,15 @@ function buildForm(kind, settings, { customId, preview = null } = {}) {
   return m.modal(customId, tr.titles[kind], [preview ? m.textDisplay(preview) : null, reasons, note, optionsPart, footer]);
 }
 
-function previewOf(snapshot) {
+function previewOf(snapshot, s = t) {
   const ts = value => (value ? `<t:${Math.floor(value / 1000)}:R>` : "?");
   if (snapshot.kind === "message") {
     const author = snapshot.author.kind === "webhook" ? `**${String(snapshot.author.webhookName || "webhook").replace(/[*_`~|<>@]/g, "")}**` : `<@${snapshot.author.userId}>`;
-    const body = snapshot.content ? evidence.quote(evidence.defang(snapshot.content.slice(0, 600))) : t.report.previewNoText;
-    const files = snapshot.attachments.length ? `\n${t.report.previewAttachments(snapshot.attachments.length)}` : "";
-    return `${t.report.previewMessage(author, ts(snapshot.createdAt))}\n${body}${files}`;
+    const body = snapshot.content ? evidence.quote(evidence.defang(snapshot.content.slice(0, 600))) : s.report.previewNoText;
+    const files = snapshot.attachments.length ? `\n${s.report.previewAttachments(snapshot.attachments.length)}` : "";
+    return `${s.report.previewMessage(author, ts(snapshot.createdAt))}\n${body}${files}`;
   }
-  return t.report.previewUser(`<@${snapshot.userId}>`, ts(snapshot.createdAt), snapshot.joinedAt ? ts(snapshot.joinedAt) : null);
+  return s.report.previewUser(`<@${snapshot.userId}>`, ts(snapshot.createdAt), snapshot.joinedAt ? ts(snapshot.joinedAt) : null);
 }
 
 async function saveDraft(guildId, userId, kind, snapshot, { query = sqlStore.query, now = new Date() } = {}) {
@@ -104,12 +110,14 @@ async function takeDraft(id, guildId, userId, { query = sqlStore.query, now = ne
 /** Shows the right form, or refuses with a clear message (never saves anything when refusing). */
 async function openForm(interaction, kind) {
   const guildId = interaction.guildId;
+  const s = strings.forUser(interaction);
   const settings = await settingsStore.get(guildId);
-  if (!settings.reportChannelId) throw new Refusal(t.report.refused.notSetUp);
+  if (!settings.reportChannelId) throw new Refusal(s.report.refused.notSetUp);
   const check = await limits.canReport(guildId, interaction.user.id, settings);
-  if (!check.ok) throw new Refusal(refusalText(check));
+  if (!check.ok) throw new Refusal(refusalText(check, s));
+  const server = strings.forServer(settings, interaction.guild);
 
-  if (kind === "general") return interaction.showModal(buildForm("general", settings, { customId: "report:g" }));
+  if (kind === "general") return interaction.showModal(buildForm("general", settings, { customId: "report:g", strings: s, server }));
 
   const botId = interaction.client.user.id;
   const result = kind === "message"
@@ -117,10 +125,10 @@ async function openForm(interaction, kind) {
       reporterId: interaction.user.id, botId, channelName: interaction.channel?.name || null, uploadLimit: interaction.attachmentSizeLimit
     })
     : evidence.fromUser(interaction.targetUser, interaction.targetMember, { reporterId: interaction.user.id, botId });
-  if (result.refused) throw new Refusal(t.report.refused[result.refused]);
+  if (result.refused) throw new Refusal(s.report.refused[result.refused]);
 
   const draftId = await saveDraft(guildId, interaction.user.id, kind, result.snapshot);
-  return interaction.showModal(buildForm(kind, settings, { customId: `report:${draftId}`, preview: previewOf(result.snapshot) }));
+  return interaction.showModal(buildForm(kind, settings, { customId: `report:${draftId}`, preview: previewOf(result.snapshot, s), strings: s, server }));
 }
 
 /**
@@ -144,8 +152,10 @@ async function submit(interaction, [draftId]) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const guildId = interaction.guildId;
   const userId = interaction.user.id;
+  const s = strings.forUser(interaction);
   const settings = await settingsStore.get(guildId);
-  if (!settings.reportChannelId) throw new Refusal(t.report.refused.notSetUp);
+  if (!settings.reportChannelId) throw new Refusal(s.report.refused.notSetUp);
+  const server = strings.forServer(settings, interaction.guild);
 
   const values = m.reader(interaction);
   let kind;
@@ -153,21 +163,21 @@ async function submit(interaction, [draftId]) {
   if (draftId === "g") {
     kind = "general";
     const details = values.text("details");
-    if (!details) throw new Refusal(t.report.refused.empty);
+    if (!details) throw new Refusal(s.report.refused.empty);
     snapshot = evidence.fromGeneral(details, values.files("screenshots"), { uploadLimit: interaction.attachmentSizeLimit });
   } else {
     const draft = await takeDraft(draftId, guildId, userId);
-    if (!draft) throw new Refusal(t.report.refused.expired);
+    if (!draft) throw new Refusal(s.report.refused.expired);
     kind = draft.kind;
     snapshot = draft.snapshot;
   }
 
   // checked again: the limits may have changed while the form was open
   const check = await limits.canReport(guildId, userId, settings);
-  if (!check.ok) throw new Refusal(refusalText(check));
+  if (!check.ok) throw new Refusal(refusalText(check, s));
 
   const picked = values.radio("reason");
-  const reason = settings.reasons.includes(picked) ? picked : t.otherReason;
+  const reason = settingsStore.reasonsFor(settings, server).includes(picked) ? picked : server.otherReason;
   const chosen = values.checked("options");
   const urgent = Boolean(settings.urgentRoleId) && chosen.includes("urgent");
   const anonymous = settings.anonymous && chosen.includes("anonymous");
@@ -178,6 +188,8 @@ async function submit(interaction, [draftId]) {
 
   const saved = await cases.submit({
     guildId, kind, reason, snapshot, reporterId: userId, anonymous, urgent, note, escalated,
+    // the reporter's language, for the outcome DM
+    locale: interaction.locale || null,
     targetUserId,
     targetChannelId: kind === "message" ? snapshot.channelId : null,
     targetMessageId: kind === "message" ? snapshot.messageId : null,
@@ -196,10 +208,10 @@ async function submit(interaction, [draftId]) {
     result = { delivered: false };
   }
 
-  const lines = [t.report.sent(saved.number, settings.outcomeDms)];
-  if (anonymous) lines.push(t.report.sentAnonymous);
-  if (urgent && saved.becameUrgent && !ping) lines.push(t.report.urgentCoolingDown);
-  if (!result.delivered) lines.push(t.report.notDelivered);
+  const lines = [s.report.sent(saved.number, settings.outcomeDms)];
+  if (anonymous) lines.push(s.report.sentAnonymous);
+  if (urgent && saved.becameUrgent && !ping) lines.push(s.report.urgentCoolingDown);
+  if (!result.delivered) lines.push(s.report.notDelivered);
   return ui.reply(interaction, ui.card({ accent: "success", sections: [lines.join("\n")] }));
 }
 
