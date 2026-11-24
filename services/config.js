@@ -66,7 +66,9 @@ const config = {
     terms: link("terms", "TERMS_URL"),
     support: link("support", "SUPPORT_URL"),
     status: link("status", "STATUS_URL"),
-    discordSafety: "https://discord.com/safety/360044103651-reporting-abusive-behavior-to-discord"
+    discordSafety: "https://discord.com/safety/360044103651-reporting-abusive-behavior-to-discord",
+    // where native speakers can check or correct a translation (in the disclaimer under languages not reviewed yet)
+    translate: "https://github.com/pigeon-studios-uk/tipoff/blob/main/CONTRIBUTING.md#translating-tipoff"
   },
 
   colours: {

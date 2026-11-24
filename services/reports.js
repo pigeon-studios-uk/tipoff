@@ -212,6 +212,8 @@ async function submit(interaction, [draftId]) {
   if (anonymous) lines.push(s.report.sentAnonymous);
   if (urgent && saved.becameUrgent && !ping) lines.push(s.report.urgentCoolingDown);
   if (!result.delivered) lines.push(s.report.notDelivered);
+  const notice = ui.unreviewed(s);
+  if (notice) lines.push(notice);
   return ui.reply(interaction, ui.card({ accent: "success", sections: [lines.join("\n")] }));
 }
 

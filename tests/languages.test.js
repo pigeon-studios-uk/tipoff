@@ -134,7 +134,8 @@ function problemsIn(raw, code) {
         if (typeof mine !== "string") problems.push(`${where}: should give text`);
         else compare(where, mine, theirs);
       } else if (Array.isArray(value)) {
-        if (value.length !== want.length) problems.push(`${where}: has ${value.length} items; English has ${want.length}`);
+        // the report form pairs reasons by position, so a translation has as many; a language's locales are its own
+        if (where !== "language.locales" && value.length !== want.length) problems.push(`${where}: has ${value.length} items; English has ${want.length}`);
       } else if (typeof value === "string") {
         compare(where, value, want);
       }
@@ -200,6 +201,19 @@ for (const { code, file, raw } of strings.FILES.values()) {
   });
 }
 
+test("languages a native speaker hasn't checked carry a short disclaimer, in that language, linking to the translators' guide", () => {
+  const ui = require("../services/ui");
+  const config = require("../services/config");
+  assert.equal(ui.unreviewed(en), null);
+  for (const lang of strings.languages()) {
+    const notice = ui.unreviewed(strings.t(lang.locales[0]));
+    if (lang.status === "reviewed") assert.equal(notice, null, lang.code);
+    else assert.ok(notice.includes(`](${config.links.translate})`), lang.code);
+  }
+  const help = require("../commands/help").helpCard(config.links, strings.merge(en, { language: { status: "ours" } }));
+  assert.match(JSON.stringify(help.components[0].toJSON()), /checked by a native speaker/);
+});
+
 test("the checks catch a broken translation", () => {
   const broken = {
     language: { name: "Test", locales: ["de"], status: "maybe" },
@@ -252,8 +266,10 @@ test("a partial translation falls back to English key by key, never breaking", (
 test("the server's language: its /setup choice, else its Discord language, else English", () => {
   assert.equal(strings.serverLocale({ language: "en-US" }, { preferredLocale: "en-GB" }), "en-US");
   assert.equal(strings.serverLocale({ language: null }, { preferredLocale: "en-US" }), "en-US");
-  // no file for German (yet): English, without forgetting the choice
-  assert.equal(strings.serverLocale({ language: "de" }, { preferredLocale: "de" }), "en-GB");
+  // a language with no file (yet): English, without forgetting the choice
+  const missing = strings.TARGET_LOCALES.find(locale => !strings.supported(locale));
+  if (missing) assert.equal(strings.serverLocale({ language: missing }, { preferredLocale: missing }), "en-GB");
+  assert.equal(strings.serverLocale({ language: "xx" }, { preferredLocale: "xx" }), "en-GB");
   assert.equal(strings.serverLocale({}, null), "en-GB");
 });
 
@@ -298,7 +314,7 @@ test("slash command names stay English; with only English, there are no translat
   for (const name of SLASH) assert.ok(commands.has(name), name);
   for (const command of commands.values()) {
     const json = command.data.toJSON();
-    assert.ok(!json.name_localizations || !Object.keys(json.name_localizations).length, json.name);
+    if (SLASH.includes(json.name)) assert.ok(!json.name_localizations || !Object.keys(json.name_localizations).length, json.name);
     if (strings.FILES.size === 1) assert.ok(!json.description_localizations || !Object.keys(json.description_localizations).length, json.name);
   }
   assert.ok(commands.get("setup").data.toJSON().options.some(o => o.name === "language"), "/setup language");

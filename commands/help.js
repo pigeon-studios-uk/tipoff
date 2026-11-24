@@ -15,7 +15,8 @@ function helpCard(links = config.links, t = en) {
       [`### ${h.reportHeading}`, h.reportMessage, h.reportUser, h.reportOther].join("\n"),
       [`### ${h.adminHeading}`, h.adminSetup].join("\n"),
       "---",
-      h.discordSafety(links.discordSafety)
+      h.discordSafety(links.discordSafety),
+      ui.unreviewed(t)
     ],
     buttons: [
       { label: h.buttons.guide, url: links.guide },
