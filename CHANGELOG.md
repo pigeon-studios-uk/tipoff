@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Languages:** Tipoff can now speak more than one language. It's still English only for now; other languages come one file at a time ([Languages](README.md#languages)). Forms and private replies use each person's own Discord language, and what Tipoff posts in the server uses the server's language.
+- `/setup language` chooses the server's language: its own Discord language (the default), or any language Tipoff has. `/setup check` shows it.
+- Outcome DMs are in the language the reporter used when they reported.
+- Command descriptions, choices and the **Report Message** / **Report User** names can be translated; slash command names stay English everywhere.
+- A [guide for translators](CONTRIBUTING.md#translating-tipoff), and tests that check every language file.
+
+### Changed
+
+- Forum status tags are found by the IDs Tipoff saved first, and by name only when it has none, so renaming a tag or changing the server's language never makes Tipoff add the tags again.
+- Two small database changes run by themselves when Tipoff starts: the server's language, and each report's language.
+
+### Fixed
+
+- Two labels in `/setup limits` were too long for Discord and were cut off. The "each member" and "whole server" part is now on its own line under them.
+
 ## [2.1.0] - 2026-11-22
 
 ### Added

@@ -1,16 +1,19 @@
 /** /reports stats and /reports user, and the counts for /privacy. */
 
 const sqlStore = require("./sqlStore");
+const en = require("../strings/en");
 
-function duration(seconds) {
+/** An average time, short: "12 min", "3.5 h", "4.2 days", with the units from strings (reportsView.durations). */
+function duration(seconds, t = en) {
   if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return null;
   const s = Number(seconds);
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min`;
-  if (s < 48 * 3600) return `${Math.round(s / 360) / 10} h`;
-  return `${Math.round(s / 8640) / 10} days`;
+  const units = t.reportsView.durations;
+  if (s < 3600) return units.minutes(Math.max(1, Math.round(s / 60)));
+  if (s < 48 * 3600) return units.hours(Math.round(s / 360) / 10);
+  return units.days(Math.round(s / 8640) / 10);
 }
 
-async function forGuild(guildId, days, { query = sqlStore.query, now = new Date() } = {}) {
+async function forGuild(guildId, days, { query = sqlStore.query, now = new Date(), strings: t = en } = {}) {
   const since = new Date(now.getTime() - days * 86400000);
   const [counts] = await query(
     `SELECT COUNT(*) AS total, SUM(status = 'open') AS open, SUM(status = 'claimed') AS claimed,
@@ -31,8 +34,8 @@ async function forGuild(guildId, days, { query = sqlStore.query, now = new Date(
   return {
     total: n(counts?.total), open: n(counts?.open), claimed: n(counts?.claimed), resolved: n(counts?.resolved), dismissed: n(counts?.dismissed),
     reports: n(reports?.reports), reporters: n(reports?.reporters),
-    toClaim: n(claims?.n) >= 3 ? duration(Number(claims.to_claim)) : null,
-    toClose: n(counts?.closed_count) >= 3 ? duration(Number(counts.to_close)) : null,
+    toClaim: n(claims?.n) >= 3 ? duration(Number(claims.to_claim), t) : null,
+    toClose: n(counts?.closed_count) >= 3 ? duration(Number(counts.to_close), t) : null,
     reasons: reasons.map(r => ({ reason: r.reason, n: n(r.n) }))
   };
 }

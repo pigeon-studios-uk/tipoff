@@ -1,14 +1,26 @@
 /**
- * Every word Tipoff shows people, in one place, so other languages can be added later by copying this
- * file. English (UK). Plain words, no jargon; Tipoff is its own brand, so nothing here names who makes it.
+ * Every word Tipoff shows people, in English (UK). This is the source every other language file is checked against:
+ * a translation has only keys this file has, and any key it leaves out falls back to the English here. See README.md
+ * (Languages) for how to add one. Plain words, no jargon; Tipoff is its own brand, so nothing here names who makes it.
+ *
+ * Plurals: plural(n, { one: "# minute", other: "# minutes" }), "#" being the number (strings/plural.js).
  */
 
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const plural = require("./plural")("en-GB");
 
 module.exports = {
+  // which Discord languages this file is for, and who checked it: "reviewed" (by a native speaker), "ours" (our own
+  // translation) or "community" (sent in, not yet checked). English is the source, so it's reviewed.
+  language: {
+    name: "English",
+    locales: ["en-GB", "en-US"],
+    status: "reviewed",
+    // shown under messages in a language that isn't reviewed yet
+    unreviewed: link => `-# This translation hasn't been checked by a native speaker yet. [Help improve it](${link}).`
+  },
+
   name: "Tipoff",
   tagline: "Reports your moderators can act on.",
-  plural,
 
   // The reasons in every report form until a server sets its own (/setup reasons). "Other" is always added last.
   defaultReasons: ["Spam or scam", "Harassment or hate", "NSFW or graphic", "Impersonation", "Rule breaking"],
@@ -25,6 +37,7 @@ module.exports = {
       roles: "Who counts as a moderator, and whose reports go to the escalation channel.",
       reasons: "The reasons people pick from when they report.",
       limits: "Cool-downs, limits, telling reporters the outcome, and how long cases are kept.",
+      language: "The language Tipoff posts in here: case cards, forum tags and alerts.",
       check: "Show the settings and check Tipoff can post where it needs to."
     },
     case: {
@@ -74,7 +87,7 @@ module.exports = {
     discordSafety: url => `-# Something that breaks Discord's own rules? Report it to Discord too: [how to report to Discord](${url}).`,
     previewMessage: (author, when) => `### Reporting a message\nBy ${author} · ${when}`,
     previewNoText: "-# (no text)",
-    previewAttachments: n => `-# ${plural(n, "attachment")}`,
+    previewAttachments: n => `-# ${plural(n, { one: "# attachment", other: "# attachments" })}`,
     previewUser: (user, created, joined) => `### Reporting ${user}\n-# Account made ${created}${joined ? ` · joined ${joined}` : ""}`,
     sent: (number, outcomeDms) => `### Report #${number} sent\nThe moderators will look at it.${outcomeDms ? "\nYou'll get a DM when it's been dealt with." : ""}`,
     sentAnonymous: "-# You reported anonymously: the moderators won't see your name.",
@@ -86,8 +99,8 @@ module.exports = {
       bot: "That's Tipoff itself.",
       notSetUp: "Reports aren't set up in this server yet. Ask an admin to run `/setup channels`.",
       blocked: "You can't send reports in this server.",
-      cooldown: minutes => `You've just sent a report. You can send another in ${plural(minutes, "minute")}.`,
-      tooManyOpen: n => `You already have ${plural(n, "open report")} here. Please wait for the moderators to deal with them.`,
+      cooldown: minutes => `You've just sent a report. You can send another in ${plural(minutes, { one: "# minute", other: "# minutes" })}.`,
+      tooManyOpen: n => `You already have ${plural(n, { one: "# open report", other: "# open reports" })} here. Please wait for the moderators to deal with them.`,
       gone: "That couldn't be loaded any more. It may have been deleted.",
       expired: "This form was open too long. Please start the report again.",
       empty: "Please say what you're reporting."
@@ -97,7 +110,7 @@ module.exports = {
   card: {
     kinds: { message: "Message reported", user: "Member reported", general: "Report" },
     status: { open: "Open", claimed: "Claimed", resolved: "Resolved", dismissed: "Dismissed" },
-    reports: n => plural(n, "report"),
+    reports: n => plural(n, { one: "# report", other: "# reports" }),
     urgent: role => `${role} · urgent report`,
     urgentNoRole: "Urgent report",
     escalated: "Escalated: this is about a member of staff",
@@ -120,7 +133,7 @@ module.exports = {
     timedOut: until => `Timed out until ${until}`,
     leftServer: "Not in the server any more",
     history: (total, resolved, dismissed) => total
-      ? `History: ${plural(total, "earlier case")} about them (${resolved} resolved, ${dismissed} dismissed)`
+      ? `History: ${plural(total, { one: "# earlier case", other: "# earlier cases" })} about them (${resolved} resolved, ${dismissed} dismissed)`
       : "History: no earlier cases about them",
     earlier: (number, status) => `Earlier: #${number}, ${status.toLowerCase()}`,
     reportersHeading: "Reporters",
@@ -137,7 +150,9 @@ module.exports = {
       deleteHint: "The saved copy stays on the case", timeoutHint: "10 minutes to 1 week", kickHint: "They can rejoin with an invite", banHint: "They can't rejoin",
       missing: perm => `Tipoff needs ${perm} for this`
     },
-    threadName: (number, who, reason) => `#${number} · ${who} · ${reason}`
+    threadName: (number, who, reason) => `#${number} · ${who} · ${reason}`,
+    // the forum post's name when the member's or author's name is unknown
+    threadFallback: { user: "member", message: "message" }
   },
 
   caseActions: {
@@ -220,14 +235,21 @@ module.exports = {
     reasons: "Reasons, one per line",
     reasonsHint: `Up to 9. "Other" is always added at the end.`,
     limitsTitle: "Tipoff: limits and privacy",
-    reporterCooldown: "Minutes between reports (each member, 0 to 30)",
+    reporterCooldown: "Minutes between reports (0 to 30)",
+    reporterCooldownHint: "For each member",
     maxOpen: "Most open reports per member (1 to 20)",
-    urgentCooldown: "Minutes between urgent pings (whole server, 0 to 60)",
+    urgentCooldown: "Minutes between urgent pings (0 to 60)",
+    urgentCooldownHint: "For the whole server",
     retention: "Days to keep closed cases (30 to 365)",
     limitOptions: "Options",
     outcomeDms: "Tell reporters the outcome by DM",
     outcomeDmsHint: "Never says what action was taken, or about whom",
     closePosts: "Close forum posts when a case is closed",
+    languageTitle: "Tipoff: language",
+    language: "Language for this server",
+    languageHint: "For case cards, forum tags and alerts. Members still see their own language.",
+    languageAuto: name => `The server's Discord language (now ${name})`,
+    languageUnreviewed: "Not checked by a native speaker yet",
     saved: "### Saved\nYour settings are saved. Here's how they look:",
     nothingChanged: "-# Nothing was changed.",
     invalidNumber: (label, min, max) => `**${label}** must be a whole number from ${min} to ${max}.`,
@@ -245,14 +267,15 @@ module.exports = {
       `**Staff roles:** ${s.staff}`,
       `**Anonymous reports:** ${s.anonymous ? "allowed" : "off"}`,
       `**Reasons:** ${s.reasons}`,
-      `**Between reports:** ${plural(s.reporterCooldown, "minute")} · **Most open reports each:** ${s.maxOpen} · **Between urgent pings:** ${plural(s.urgentCooldown, "minute")}`,
-      `**Tell reporters the outcome:** ${s.outcomeDms ? "yes" : "no"} · **Close forum posts when done:** ${s.closePosts ? "yes" : "no"} · **Keep closed cases:** ${plural(s.retention, "day")}`
+      `**Between reports:** ${plural(s.reporterCooldown, { one: "# minute", other: "# minutes" })} · **Most open reports each:** ${s.maxOpen} · **Between urgent pings:** ${plural(s.urgentCooldown, { one: "# minute", other: "# minutes" })}`,
+      `**Language:** ${s.language}`,
+      `**Tell reporters the outcome:** ${s.outcomeDms ? "yes" : "no"} · **Close forum posts when done:** ${s.closePosts ? "yes" : "no"} · **Keep closed cases:** ${plural(s.retention, { one: "# day", other: "# days" })}`
     ].join("\n"),
     checkTitle: "### Tipoff check",
     checkOk: "Everything's ready. Members can report with right-click › **Apps**, or `/report`.",
     checkProblems: "Fix these so reports reach your moderators:",
-    redelivered: n => `-# ${plural(n, "waiting report")} posted now.`,
-    stillWaiting: n => `-# ${plural(n, "report")} still waiting to be posted.`,
+    redelivered: n => `-# ${plural(n, { one: "# waiting report", other: "# waiting reports" })} posted now.`,
+    stillWaiting: n => `-# ${plural(n, { one: "# report", other: "# reports" })} still waiting to be posted.`,
     problems: {
       noChannel: "No report channel yet: run `/setup channels`.",
       missingChannel: (what, id) => `The ${what} (<#${id}>) can't be found. Pick another with \`/setup channels\`.`,
@@ -284,10 +307,10 @@ module.exports = {
     userTitle: who => `### Cases about ${who}`,
     none: "No cases about them.",
     line: (number, reason, status, when) => `#${number} · ${reason} · ${status} · ${when}`,
-    statsTitle: days => `### Reports in the last ${plural(days, "day")}`,
+    statsTitle: days => `### Reports in the last ${plural(days, { one: "# day", other: "# days" })}`,
     stats: s => [
       `**Cases:** ${s.total} (${s.open} open, ${s.claimed} claimed, ${s.resolved} resolved, ${s.dismissed} dismissed)`,
-      `**Reports:** ${s.reports} from ${plural(s.reporters, "member")}`,
+      `**Reports:** ${s.reports} from ${plural(s.reporters, { one: "# member", other: "# members" })}`,
       `**Time to first claim:** ${s.toClaim}`,
       `**Time to close:** ${s.toClose}`
     ].join("\n"),
@@ -298,7 +321,9 @@ module.exports = {
     unblocked: who => `${who} can send reports here again.`,
     notBlocked: who => `${who} wasn't blocked.`,
     cantBlockStaff: "You can't block a moderator or someone with Manage Server.",
-    periods: { 7: "7 days", 30: "30 days", 90: "90 days", 365: "A year" }
+    periods: { 7: "7 days", 30: "30 days", 90: "90 days", 365: "A year" },
+    // average times in the stats: under an hour, under two days, and longer
+    durations: { minutes: n => `${n} min`, hours: n => `${n} h`, days: n => `${n} days` }
   },
 
   privacy: {
@@ -307,13 +332,14 @@ module.exports = {
     asTarget: n => `**Cases about you:** ${n}`,
     asModerator: n => `**Cases you handled:** ${n}`,
     blocked: "**You're blocked from reporting here.**",
-    rules: retention => `Closed cases are deleted after ${plural(retention, "day")}; open ones when they close (at most a year). Everything goes 30 days after Tipoff leaves the server. Anonymous reports are never shown to moderators.`,
+    rules: retention => `Closed cases are deleted after ${plural(retention, { one: "# day", other: "# days" })}; open ones when they close (at most a year). Everything goes 30 days after Tipoff leaves the server. Anonymous reports are never shown to moderators.`,
     cards: "The cards Tipoff posted are in this server's own channels, so the server's admins decide what happens to them.",
     request: link => (link ? `To get a copy, or have something corrected or deleted, see [Tipoff's privacy policy](${link}).` : "To get a copy, or have something corrected or deleted, contact Tipoff's support.")
   },
 
   alerts: {
     failing: (what, problem) => `### Tipoff can't post reports\n${what}: ${problem}\nReports are saved and will be posted once this is fixed: run \`/setup check\` after fixing it.`,
+    problems: { gone: "it can't be found (it may have been deleted)", noAccess: "Tipoff doesn't have permission to post there" },
     ownerDm: server => `-# You're getting this as the owner of **${server}**, because Tipoff couldn't post there.`
   },
 
