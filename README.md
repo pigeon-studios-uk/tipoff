@@ -38,6 +38,7 @@
 - [Configuration](#configuration)
 - [Inviting your bot](#inviting-your-bot)
 - [Setting it up in your server](#setting-it-up-in-your-server)
+- [Languages](#languages)
 - [Updating](#updating)
 - [How it works](#how-it-works)
 - [Security and privacy](#security-and-privacy)
@@ -186,7 +187,32 @@ Someone with **Manage Server** runs:
 1. `/setup channels` to pick where reports go: a text channel, thread or forum.
 2. `/setup check` to check every permission. It says exactly what to fix.
 
-That's it: members can report straight away. `/setup roles`, `/setup reasons` and `/setup limits` are there when you want them. The [guide](https://pigeonstudios.co.uk/apps/tipoff/guide/) explains every setting and command.
+That's it: members can report straight away. `/setup roles`, `/setup reasons`, `/setup limits` and `/setup language` are there when you want them. The [guide](https://pigeonstudios.co.uk/apps/tipoff/guide/) explains every setting and command.
+
+## Languages
+
+Tipoff speaks English today, and is built so other languages can be added one file at a time. Each message picks its language like this:
+
+| What | Language |
+|---|---|
+| Report forms, private replies, refusals, `/help`, `/privacy`, `/setup` replies | The person's own Discord language |
+| Case cards, forum post names and status tags, alerts to admins, audit log reasons | The server's language: chosen with `/setup language`, or the server's own Discord language (Server Settings › Community), or English |
+| Outcome DMs to reporters | The language the reporter used when they reported |
+| Command descriptions, choices, and the **Report Message** / **Report User** menu names | Each person's Discord language. Slash command names (`/report`, `/setup`...) stay English everywhere, so guides and moderators share one name |
+
+Anything a language doesn't have yet falls back to English, word by word, so a missing or half-finished translation never breaks anything. Forum status tags are remembered by ID, so changing a server's language later never breaks a forum that already has them.
+
+### Adding a language
+
+Every word is in `strings/`, one file per language, named by its [Discord locale](https://docs.discord.com/developers/reference#locales): `en.js` (English, for `en-GB` and `en-US`) is the source.
+
+1. Copy `strings/en.js` to the new language's file, for example `strings/de.js`, `strings/es-419.js` or `strings/pt-BR.js`.
+2. Fill in its `language` block: `name` in the language itself ("Deutsch"), `locales` (Discord's codes it's for, the file's name first) and `status`: `ours` for our own translation, `community` for one sent in, `reviewed` once a native speaker has checked it.
+3. Translate the values, never the keys. Leave out anything you haven't translated: English fills the gap. Keep `` `code` ``, links and the `${...}` parts as they are.
+4. Plurals use `plural(n, { one: "# minute", other: "# minutes" })`, with the forms your language needs (Polish, Czech, Russian and Ukrainian use `few` and `many` too; Chinese, Japanese, Korean, Thai and Vietnamese only `other`). Make it with `require("./plural")("de")`.
+5. Run `npm test`. It checks every language file: only keys English has, the same arguments and placeholders, Discord's length limits (a form title 45 characters, a button 80, a command description 100, a right-click name 32...), and the plural forms.
+
+Then register the commands again (`npm run register`, or restart) so Discord shows the translated descriptions. The [contributing guide](CONTRIBUTING.md#translating-tipoff) has more for translators.
 
 ## Updating
 
@@ -209,7 +235,7 @@ Discord ──▶ events/interactionCreate.js ──▶ commands/ and components
 - **Guilds intent only.** Context menus, slash commands, buttons and modals bring everything a report needs.
 - **One permission check** for every command, button, menu and modal (`events/interactionCreate.js`, `services/permissions.js`).
 - **Components V2** for everything it posts, and nobody is ever pinged unless a message is meant to ping them.
-- **Every word in one file** (`strings/en.js`).
+- **Every word in one place** (`strings/`): English in `strings/en.js`, and one file for each other language.
 - `GET /health` answers `200` while everything works and `503` when something doesn't, with the names of the failing checks only.
 
 | Folder | Holds |
@@ -219,7 +245,7 @@ Discord ──▶ events/interactionCreate.js ──▶ commands/ and components
 | `events/` | Discord events |
 | `services/` | Cases, reports, delivery, cards, settings, limits, the database |
 | `migrations/` | The database schema, in numbered steps |
-| `strings/` | Every word Tipoff says |
+| `strings/` | Every word Tipoff says, one file per language |
 | `tests/` | `npm test` (database tests need `MYSQL_*` set) |
 | `assets/brand/` | Tipoff's logo, icons and banners |
 
@@ -265,7 +291,7 @@ We don't offer support for self-hosted copies. For the hosted Tipoff, use the [T
 
 ## Contributing
 
-Bug reports and suggestions are welcome as issues. See our [contributing guide](https://github.com/pigeon-studios-uk/.github/blob/main/CONTRIBUTING.md) before opening a pull request.
+Bug reports and suggestions are welcome as issues. See our [contributing guide](https://github.com/pigeon-studios-uk/.github/blob/main/CONTRIBUTING.md) before opening a pull request. Translations are very welcome too: see [Translating Tipoff](CONTRIBUTING.md#translating-tipoff).
 
 ## Licence
 

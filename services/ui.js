@@ -59,7 +59,7 @@ function card({ sections = [], buttons = [], accent = "brand", ephemeral = true 
   };
 }
 
-/** A short "couldn't do that" message. */
+/** A short "couldn't do that" message. title: in the reader's language (English if left out). */
 function error(text, title) {
   return card({ accent: "danger", sections: [`### ${title || require("../strings/en").errors.title}\n${text}`] });
 }

@@ -1,14 +1,13 @@
 const { SlashCommandBuilder, InteractionContextType, ApplicationIntegrationType } = require("discord.js");
 const reports = require("../services/reports");
-const t = require("../strings/en");
+const en = require("../strings/en");
+const { describe } = require("../utility/localize");
 
 // /report: anything that isn't one message or one member, with up to 5 screenshots
 module.exports = {
   level: "everyone",
 
-  data: new SlashCommandBuilder()
-    .setName(t.commands.report.name)
-    .setDescription(t.commands.report.description)
+  data: describe(new SlashCommandBuilder().setName(en.commands.report.name), s => s.commands.report.description)
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild),
 

@@ -16,6 +16,9 @@ const sqlStore = require("./sqlStore");
 const OPEN = ["open", "claimed"];
 const CLOSED = ["resolved", "dismissed"];
 
+// a Discord locale is at most 6 characters ("es-419"); the column allows 10
+const localeOf = report => (report.locale && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,4})?$/.test(String(report.locale)) ? String(report.locale) : null);
+
 function openKey({ kind, targetUserId, targetMessageId, editStamp = 0 }) {
   if (kind === "message") return `m:${targetMessageId}:${editStamp || 0}`;
   if (kind === "user") return `u:${targetUserId}`;
@@ -26,7 +29,7 @@ function openKey({ kind, targetUserId, targetMessageId, editStamp = 0 }) {
  * Saves a report: joins the open case for its target, or opens a new one. Runs in one transaction.
  *
  * report: { guildId, kind, reason, snapshot, targetUserId, targetChannelId, targetMessageId, editStamp, reporterId,
- *           anonymous, urgent, note, escalated }
+ *           anonymous, urgent, note, escalated, locale (the reporter's Discord language, for the outcome DM) }
  * Resolves to { caseId, number, joined, newReporter, becameUrgent }.
  */
 async function submit(report, { transaction = sqlStore.transaction, now = new Date() } = {}) {
@@ -43,10 +46,10 @@ async function submit(report, { transaction = sqlStore.transaction, now = new Da
       if (existing) {
         const [already] = await q("SELECT id FROM tp_case_reports WHERE case_id = ? AND reporter_id = ?", [existing.id, report.reporterId]);
         await q(
-          `INSERT INTO tp_case_reports (case_id, reporter_id, anonymous, urgent, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO tp_case_reports (case_id, reporter_id, anonymous, urgent, note, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE note = COALESCE(VALUES(note), note), anonymous = VALUES(anonymous),
-             urgent = GREATEST(urgent, VALUES(urgent)), updated_at = VALUES(updated_at)`,
-          [existing.id, report.reporterId, report.anonymous ? 1 : 0, report.urgent ? 1 : 0, report.note || null, now, now]
+             urgent = GREATEST(urgent, VALUES(urgent)), locale = COALESCE(VALUES(locale), locale), updated_at = VALUES(updated_at)`,
+          [existing.id, report.reporterId, report.anonymous ? 1 : 0, report.urgent ? 1 : 0, report.note || null, localeOf(report), now, now]
         );
         const becameUrgent = Boolean(report.urgent) && !Number(existing.urgent);
         await q("UPDATE tp_cases SET urgent = GREATEST(urgent, ?), escalated = GREATEST(escalated, ?), updated_at = ? WHERE id = ?",
@@ -80,8 +83,8 @@ async function submit(report, { transaction = sqlStore.transaction, now = new Da
     );
     const caseId = Number(result.insertId);
     await q("INSERT INTO tp_case_evidence (case_id, data) VALUES (?, ?)", [caseId, JSON.stringify(report.snapshot || {})]);
-    await q("INSERT INTO tp_case_reports (case_id, reporter_id, anonymous, urgent, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [caseId, report.reporterId, report.anonymous ? 1 : 0, report.urgent ? 1 : 0, report.note || null, now, now]);
+    await q("INSERT INTO tp_case_reports (case_id, reporter_id, anonymous, urgent, note, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [caseId, report.reporterId, report.anonymous ? 1 : 0, report.urgent ? 1 : 0, report.note || null, localeOf(report), now, now]);
     await q("INSERT INTO tp_case_events (case_id, actor_id, action, created_at) VALUES (?, ?, 'opened', ?)", [caseId, report.reporterId, now]);
     return { caseId, number, joined: false, newReporter: true, becameUrgent: Boolean(report.urgent) };
   });
@@ -113,7 +116,7 @@ async function saveEvidence(caseId, data, { query = sqlStore.query } = {}) {
 }
 
 async function reporters(caseId, { query = sqlStore.query } = {}) {
-  return query("SELECT reporter_id, anonymous, urgent, note, created_at, updated_at FROM tp_case_reports WHERE case_id = ? ORDER BY created_at, id", [caseId]);
+  return query("SELECT reporter_id, anonymous, urgent, note, locale, created_at, updated_at FROM tp_case_reports WHERE case_id = ? ORDER BY created_at, id", [caseId]);
 }
 
 async function events(caseId, { query = sqlStore.query } = {}) {

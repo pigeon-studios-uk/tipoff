@@ -43,6 +43,13 @@ function checkboxes(customId, options) {
   };
 }
 
+function stringSelect(customId, options, { required = true } = {}) {
+  return {
+    type: C.StringSelect, custom_id: customId, required, min_values: required ? 1 : 0, max_values: 1,
+    options: options.slice(0, 25).map(o => ({ value: cut(o.value, 100), label: cut(o.label, 100), ...(o.description ? { description: cut(o.description, 100) } : {}), ...(o.default ? { default: true } : {}) }))
+  };
+}
+
 function fileUpload(customId, { max = 5 } = {}) {
   return { type: C.FileUpload, custom_id: customId, required: false, min_values: 0, max_values: max };
 }
@@ -64,6 +71,7 @@ function roleSelect(customId, { max = 1, current = [] } = {}) {
 
 /**
  * Reads a submitted modal into plain values, whatever discord.js version: { text(id), radio(id), checked(id) -> [],
+ * selected(id) -> [values],
  * files(id) -> [Attachment], channel(id) -> id | null, roles(id) -> [id] }. Missing fields read as empty.
  */
 function reader(interaction) {
@@ -80,6 +88,7 @@ function reader(interaction) {
     text: id => safe(() => f.getTextInputValue(id), "").trim(),
     radio: id => safe(() => f.getRadioGroup(id), null),
     checked: id => [...safe(() => f.getCheckboxGroup(id), [])],
+    selected: id => [...safe(() => f.getStringSelectValues(id), [])],
     files: id => [...safe(() => f.getUploadedFiles(id)?.values(), [])],
     channel: id => {
       const found = safe(() => f.getSelectedChannels(id), null);
@@ -93,4 +102,4 @@ function reader(interaction) {
   };
 }
 
-module.exports = { C, TEXT, MAX_COMPONENTS, modal, textDisplay, label, textInput, radio, checkboxes, fileUpload, channelSelect, roleSelect, reader };
+module.exports = { C, TEXT, MAX_COMPONENTS, modal, textDisplay, label, textInput, radio, checkboxes, stringSelect, fileUpload, channelSelect, roleSelect, reader };

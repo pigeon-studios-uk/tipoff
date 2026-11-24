@@ -1,10 +1,12 @@
 const { SlashCommandBuilder, InteractionContextType, ApplicationIntegrationType } = require("discord.js");
 const config = require("../services/config");
 const ui = require("../services/ui");
-const t = require("../strings/en");
+const strings = require("../strings");
+const en = require("../strings/en");
+const { describe } = require("../utility/localize");
 
-/** The /help card. Links that aren't live yet (services/config.js, links) are left out. Exported for tests. */
-function helpCard(links = config.links) {
+/** The /help card, in t's language. Links that aren't live yet (services/config.js, links) are left out. Exported for tests. */
+function helpCard(links = config.links, t = en) {
   const h = t.help;
   return ui.card({
     sections: [
@@ -28,13 +30,11 @@ module.exports = {
   level: "everyone",
   helpCard,
 
-  data: new SlashCommandBuilder()
-    .setName(t.commands.help.name)
-    .setDescription(t.commands.help.description)
+  data: describe(new SlashCommandBuilder().setName(en.commands.help.name), s => s.commands.help.description)
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
-    return ui.reply(interaction, helpCard());
+    return ui.reply(interaction, helpCard(config.links, strings.forUser(interaction)));
   }
 };

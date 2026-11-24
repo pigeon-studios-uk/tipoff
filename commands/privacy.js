@@ -3,21 +3,22 @@ const config = require("../services/config");
 const stats = require("../services/stats");
 const settingsStore = require("../services/settings");
 const ui = require("../services/ui");
-const t = require("../strings/en");
+const strings = require("../strings");
+const en = require("../strings/en");
+const { describe } = require("../utility/localize");
 
 // /privacy: what Tipoff keeps about you in this server, and how to get it copied or deleted
 module.exports = {
   level: "everyone",
 
-  data: new SlashCommandBuilder()
-    .setName(t.commands.privacy.name)
-    .setDescription(t.commands.privacy.description)
+  data: describe(new SlashCommandBuilder().setName(en.commands.privacy.name), s => s.commands.privacy.description)
     .setIntegrationTypes(ApplicationIntegrationType.GuildInstall)
     .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const [held, settings] = await Promise.all([stats.aboutPerson(interaction.guildId, interaction.user.id), settingsStore.get(interaction.guildId)]);
+    const t = strings.forUser(interaction);
     const p = t.privacy;
     return ui.reply(interaction, ui.card({
       sections: [
