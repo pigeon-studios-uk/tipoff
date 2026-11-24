@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Command descriptions, choices and the **Report Message** / **Report User** names can be translated; slash command names stay English everywhere.
 - A [guide for translators](CONTRIBUTING.md#translating-tipoff), and tests that check every language file.
 - **German** (`de`), our own translation. Until a native speaker has checked it, longer messages in German end with a short line saying so and how to help.
+- **Spanish (Spain)** (`es-ES`), our own translation, also waiting for a native speaker to check it.
 
 ### Changed
 
