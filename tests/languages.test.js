@@ -291,6 +291,8 @@ test("plurals: English one and other; Polish few and many; Japanese no plural fo
   assert.equal(japanese(5, { other: "#分" }), "5分");
 
   plural.missing.clear();
+  plural("es-ES")(2, { one: "# minuto", other: "# minutos" });
+  assert.deepEqual([...plural.missing], [], "Spanish's many (millions only) is optional");
   polish(5, { one: "# minuta", other: "# minuty" });
   assert.ok([...plural.missing].some(line => /no "many" form/.test(line)), "a missing form is noticed");
   plural.missing.clear();
@@ -321,6 +323,9 @@ test("slash command names stay English; with only English, there are no translat
 });
 
 test("a translation's own text goes into the command's localizations, and English fills nothing in", () => {
+  // a stand-in German, alone (the real translations are put back afterwards)
+  const real = new Map(strings.FILES);
+  for (const code of real.keys()) if (code !== strings.ENGLISH) strings.FILES.delete(code);
   strings.FILES.set("de", { code: "de", file: "de.js", raw: { language: { name: "Deutsch", locales: ["de"], status: "ours" }, commands: { case: { view: "Einen Fall zeigen." }, reportUser: { name: "Mitglied melden" } }, reportsView: { periods: { 7: "7 Tage" } } } });
   try {
     const { ContextMenuCommandBuilder, SlashCommandSubcommandBuilder } = require("discord.js");
@@ -334,7 +339,8 @@ test("a translation's own text goes into the command's localizations, and Englis
     assert.deepEqual(menu.name_localizations, { de: "Mitglied melden" });
     assert.deepEqual(localize.choice(s => s.reportsView.periods[7], 7), { name: "7 days", value: 7, name_localizations: { de: "7 Tage" } });
   } finally {
-    strings.FILES.delete("de");
+    strings.FILES.clear();
+    for (const [code, entry] of real) strings.FILES.set(code, entry);
   }
 });
 
@@ -346,7 +352,7 @@ test("/setup language: the server's Discord language first, then one option per 
   assert.equal(form.custom_id, "setup:language");
   const select = form.components[0].component;
   assert.equal(select.type, 3);
-  assert.deepEqual(select.options.map(o => o.value), ["auto", "en-GB"]);
+  assert.deepEqual(select.options.map(o => o.value), ["auto", "en-GB", ...strings.languages().slice(1).map(lang => lang.locales[0])]);
   assert.equal(select.options[0].default, true);
   assert.match(select.options[0].label, /Discord language \(now English\)/);
 

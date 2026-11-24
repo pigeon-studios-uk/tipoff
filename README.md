@@ -191,7 +191,7 @@ That's it: members can report straight away. `/setup roles`, `/setup reasons`, `
 
 ## Languages
 
-Tipoff speaks English and German, and is built so other languages can be added one file at a time. Each message picks its language like this:
+Tipoff speaks English, German and Spanish (Spain), and is built so other languages can be added one file at a time. Each message picks its language like this:
 
 | What | Language |
 |---|---|
