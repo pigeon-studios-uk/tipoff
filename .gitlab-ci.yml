@@ -2,7 +2,7 @@
 # https://gitlab.com/pigeon-studios/tools/ci-templates
 include:
   - project: pigeon-studios/tools/ci-templates
-    ref: v1.4.1
+    ref: v1.5.0
     file:
       - templates/checks.yml
       - templates/release.yml
@@ -10,6 +10,8 @@ include:
 # free: once a tag passes and its GitHub release is out, publish to the registry and GitHub Discussions.
 variables:
   PS_RELEASE_KIND: free
+  # this project is bots/tipoff/tipoff-public on GitLab, but the GitHub repository is pigeon-studios-uk/tipoff
+  PS_GITHUB_REPO: tipoff
 
 stages:
   - test
