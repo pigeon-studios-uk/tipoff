@@ -287,7 +287,7 @@ MariaDB 10.6 or newer, and MySQL 8 or newer. Every release is tested on both.
 
 ## Support
 
-We don't offer support for self-hosted copies. For the hosted Tipoff, use the [Tipoff Support server](https://discord.gg/7Hjd93tmMk). Bugs in the code are welcome as [GitHub issues](https://github.com/pigeon-studios-uk/tipoff/issues).
+We don't offer support for self-hosted copies. For the hosted Tipoff, use our support server, [The Roost](https://discord.gg/44aEvmqTtj). Bugs in the code are welcome as [GitHub issues](https://github.com/pigeon-studios-uk/tipoff/issues).
 
 ## Contributing
 
